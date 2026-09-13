@@ -10,4 +10,4 @@ textColor = "#0F2C5C"
 [client]
 # Blendet das Entwicklermenue aus. Die Schueler sehen kein "Deploy".
 toolbarMode = "minimal"
-showErrorDetails = false
+showErrorDetails = true
