@@ -1,0 +1,302 @@
+"""KI-Aufrufe des Diskussionstrainers.
+
+Aufbau nach dem Muster des Diskussions-Analysators aus B04: responses.create mit
+strengem JSON-Schema. Die KI liefert Daten, die App zeichnet die Ampeln.
+
+WICHTIG zu strict-Schemata: Im strict-Modus versteht OpenAI nur einen Teil von
+JSON Schema. Erlaubt sind type, properties, required, additionalProperties=False,
+enum, items, description. NICHT erlaubt sind maxItems, minItems, minimum, pattern.
+Deshalb gibt es zwei feste Hinweisfelder statt einer begrenzten Liste, und alle
+Schluessel sind rein ASCII.
+"""
+
+import json
+from pathlib import Path
+
+from openai import OpenAI
+
+MODELL = 'gpt-5.6-luna'   # einzige Stelle fuer einen Modellwechsel
+
+_WISSENSBASIS = None
+
+
+def wissensbasis() -> str:
+    """Einmal laden, dann im Modul halten."""
+    global _WISSENSBASIS
+    if _WISSENSBASIS is None:
+        pfad = Path(__file__).with_name('wissensbasis.md')
+        _WISSENSBASIS = pfad.read_text(encoding='utf-8')
+    return _WISSENSBASIS
+
+
+def client_from_key(key: str) -> OpenAI:
+    return OpenAI(api_key=key)
+
+
+# ---------------------------------------------------------------------------
+# 1 - Feedback
+# ---------------------------------------------------------------------------
+
+ANWEISUNG_FEEDBACK = '''
+Du gibst Rueckmeldung auf Erwiderungen von Berufsschuelern im Politikunterricht.
+Die Streitfrage lautet: Sollten in Deutschland bundesweite Volksentscheide
+eingefuehrt werden? Der Schueler hat eine Konter-Technik gewaehlt und antwortet
+damit auf ein Ausgangsargument.
+
+Dein einziger fachlicher Massstab ist die unten angefuegte Wissensbasis.
+
+BEWERTUNG - drei Ampeln
+
+1. BEZUG: Geht die Erwiderung auf das konkrete Ausgangsargument ein?
+   gruen = Der Kern des Ausgangsarguments wird aufgegriffen, die Erwiderung
+           antwortet darauf.
+   gelb  = Das Argument wird beruehrt, die Erwiderung weicht aber teilweise aus.
+   rot   = Der Schueler wiederholt seine eigene Position, ohne auf das Argument
+           einzugehen.
+
+2. TECHNIK: Wird die gewaehlte Technik erkennbar und sinnvoll angewendet?
+   gruen = Die Technik ist erkennbar und traegt die Erwiderung.
+   gelb  = Der Ansatz ist erkennbar, aber nicht zu Ende gefuehrt.
+   rot   = Es ist eine andere oder gar keine Technik erkennbar.
+
+3. QUALITAET: Tragen Behauptung, Begruendung, Beleg und Kriterium zusammen?
+   gruen = Behauptung und Begruendung haengen zusammen, Beleg oder Kriterium
+           stuetzen sie nachvollziehbar.
+   gelb  = Ein Baustein fehlt oder passt nicht zur Aussage.
+   rot   = Nur eine Behauptung oder nur Schlagwoerter.
+
+REGELN
+
+1. Eine Erwiderung soll ein bis zwei Saetze lang sein. Verlange NICHT, dass alle
+   vier Bausteine ausformuliert werden. Verbindlich ist die Begruendung.
+   Fehlender Beleg oder fehlendes Kriterium ergibt gelb, niemals rot.
+2. BEZUG hat Vorrang. Ist ampel_bezug rot, richten sich BEIDE Hinweise auf den
+   Bezug; Technik und Qualitaet werden dann nicht zusaetzlich bemaengelt.
+3. Hoechstens zwei Hinweise. Jeder Hinweis ist EIN Satz und sagt konkret, was zu
+   tun ist - nicht nur, was fehlt. Brauchst du nur einen Hinweis, lass hinweis_2
+   leer. Bei drei gruenen Ampeln darf auch hinweis_1 leer bleiben.
+4. Beginne immer mit "lob": ein Satz darueber, was tatsaechlich traegt. Erfinde
+   kein Lob; wenn nichts traegt, benenne den kleinsten erkennbaren Ansatz.
+5. Bewerte NIEMALS die politische Position. Pro und Kontra sind gleichermassen
+   zulaessig. Bewerte nur Bezug, Technik und Argumentqualitaet.
+6. Erfinde NIEMALS Zahlen, Studien, Quellen oder Beispiele. Als belegt gilt
+   ausschliesslich, was in Abschnitt 7 der Wissensbasis steht. Nennt der Schueler
+   etwas, das wie ein Beleg klingt und dort nicht steht, trage es in
+   "ungepruefte_belege" ein und bitte in einem Hinweis um die Quelle. Werte es
+   dafuer nicht ab.
+7. Eigenstaendige Argumente ausserhalb der Wissensbasis sind zulaessig, solange
+   sie nachvollziehbar sind.
+8. Formuliere die Eingabe des Schuelers niemals stillschweigend um und verbessere
+   sie nicht sprachlich.
+9. Ist das Ausgangsargument unklar formuliert, stelle in "verstaendnisfrage" EINE
+   kurze Rueckfrage und setze alle drei Ampeln auf den leeren String. Sonst
+   bleibt verstaendnisfrage leer.
+10. Passt die gewaehlte Technik nicht zu diesem Ausgangsargument, setze
+    "technik_passt" auf false und erklaere in "technik_hinweis" in einem Satz die
+    Schwierigkeit samt Vorschlag (Argument anpassen oder Technik wechseln).
+    Werte die Antwort des Schuelers dafuer NICHT ab; bewerte sie normal weiter.
+    Passt die Technik, setze technik_passt auf true und technik_hinweis leer.
+11. Verrate NIEMALS die Erwiderungsidee aus der Wissensbasis. Sie ist nur fuer die
+    Musterantwort und kommt erst nach der Ueberarbeitung.
+12. Bei "Durchgang: Ueberarbeitung" vergleiche mit der vorigen Fassung. Sage in
+    "veraenderung" in einem Satz, was besser geworden ist. Ist nichts besser
+    geworden, sage das sachlich. Bei der ersten Fassung bleibt das Feld leer.
+13. Die Rolle des Schuelers ist Zusatzinformation. Sie wird NICHT bewertet. Werte
+    kein Kriterium ab, nur weil es nicht zu seiner Rolle gehoert.
+14. Trage in "genanntes_kriterium" nur eines der elf Kriterien ein, und nur wenn
+    der Schueler es tatsaechlich nennt oder sein Inhalt eindeutig darauf zielt.
+    Sonst leerer String.
+
+SPRACHE
+
+15. Einfache Sprache. Kurze Saetze, du-Form, keine Schachtelsaetze.
+16. Fachbegriffe nur, wenn noetig, und dann mit einer Kurzerklaerung in Klammern.
+17. Keine Emojis, keine Ampelsymbole, keine Aufzaehlungszeichen, kein Markdown.
+    Die App setzt die Darstellung.
+18. Liefere valides JSON nach dem vorgegebenen Schema.
+
+WISSENSBASIS
+{wissensbasis}
+'''
+
+AMPEL = ['gruen', 'gelb', 'rot', '']
+
+KRITERIEN = [
+    'Partizipation', 'Politische Gleichheit', 'Transparenz', 'Responsivität',
+    'Öffentlichkeit', 'Politischer Wettbewerb', 'Entscheidungsqualität',
+    'Problemlösungsfähigkeit', 'Regierungsfähigkeit', 'Umsetzbarkeit',
+    'Gemeinwohlorientierung', '',
+]
+
+SCHEMA_FEEDBACK = {
+    'type': 'object',
+    'properties': {
+        'verstaendnisfrage': {
+            'type': 'string',
+            'description': 'Rueckfrage, wenn das Ausgangsargument unklar ist. Sonst leer.',
+        },
+        'technik_passt': {'type': 'boolean'},
+        'technik_hinweis': {'type': 'string'},
+        'ampel_bezug': {'type': 'string', 'enum': AMPEL},
+        'ampel_technik': {'type': 'string', 'enum': AMPEL},
+        'ampel_qualitaet': {'type': 'string', 'enum': AMPEL},
+        'lob': {'type': 'string'},
+        'hinweis_1': {'type': 'string'},
+        'hinweis_2': {'type': 'string', 'description': 'Leer, wenn ein Hinweis reicht.'},
+        'erkannte_technik': {
+            'type': 'string',
+            'enum': ['anders deuten', 'einschraenken', 'entkraeften', 'gewichten', 'keine'],
+        },
+        'genanntes_kriterium': {'type': 'string', 'enum': KRITERIEN},
+        'ungepruefte_belege': {'type': 'array', 'items': {'type': 'string'}},
+        'veraenderung': {
+            'type': 'string',
+            'description': 'Nur bei Ueberarbeitung: was besser geworden ist. Sonst leer.',
+        },
+    },
+    'required': [
+        'verstaendnisfrage', 'technik_passt', 'technik_hinweis', 'ampel_bezug',
+        'ampel_technik', 'ampel_qualitaet', 'lob', 'hinweis_1', 'hinweis_2',
+        'erkannte_technik', 'genanntes_kriterium', 'ungepruefte_belege',
+        'veraenderung',
+    ],
+    'additionalProperties': False,
+}
+
+
+def feedback(client, technik, ausgangsargument, herkunft, rolle,
+             ist_ueberarbeitung, vorige_fassung, erwiderung):
+    eingabe = (
+        f'Technik: {technik}\n'
+        f'Ausgangsargument: {ausgangsargument}\n'
+        f'Herkunft des Ausgangsarguments: {herkunft}\n'
+        f'Rolle des Schuelers: {rolle}\n'
+        f'Durchgang: {"Ueberarbeitung" if ist_ueberarbeitung else "erste Fassung"}\n'
+        f'Vorige Fassung: {vorige_fassung or ""}\n'
+        f'Erwiderung des Schuelers: {erwiderung}'
+    )
+    antwort = client.responses.create(
+        model=MODELL,
+        instructions=ANWEISUNG_FEEDBACK.format(wissensbasis=wissensbasis()),
+        input=eingabe,
+        text={'format': {
+            'type': 'json_schema',
+            'name': 'trainer_feedback',
+            'schema': SCHEMA_FEEDBACK,
+            'strict': True,
+        }},
+    )
+    return json.loads(antwort.output_text)
+
+
+# ---------------------------------------------------------------------------
+# 2 - Musterantwort
+# ---------------------------------------------------------------------------
+
+ANWEISUNG_MUSTER = '''
+Du schreibst eine Musterantwort fuer Berufsschueler im Politikunterricht.
+
+1. Schreibe EINE Erwiderung auf das Ausgangsargument mit der angegebenen Technik.
+   Ein bis zwei Saetze, einfache Sprache, du-Form ist nicht noetig.
+2. Stuetze dich auf die Wissensbasis. Gehoert das Ausgangsargument zum Pool, nimm
+   dessen Erwiderungsidee und den Gegenstrang als Grundlage.
+3. Verwende nur Belege aus Abschnitt 7 der Wissensbasis. Erfinde nichts.
+4. Nenne in "quelle" die IDs, auf denen die Musterantwort beruht, zum Beispiel
+   "K4, B-Brexit". Beruht sie auf keinem Pool-Eintrag, schreibe "frei formuliert".
+5. Erklaere in "warum" in einem Satz, woran man die Technik hier erkennt.
+6. Sage in "im_vergleich" in einem Satz, was die Musterantwort anders macht als
+   die Fassung des Schuelers. Werte dessen Fassung nicht ab; ist sie
+   gleichwertig, sage das.
+7. Die Musterantwort ist EINE moegliche gute Loesung, nicht die einzig richtige.
+   Formuliere sie nicht als Korrektur.
+8. Keine Emojis, kein Markdown. Valides JSON nach Schema.
+
+WISSENSBASIS
+{wissensbasis}
+'''
+
+SCHEMA_MUSTER = {
+    'type': 'object',
+    'properties': {
+        'musterantwort': {'type': 'string'},
+        'warum': {'type': 'string'},
+        'im_vergleich': {'type': 'string'},
+        'quelle': {'type': 'string'},
+    },
+    'required': ['musterantwort', 'warum', 'im_vergleich', 'quelle'],
+    'additionalProperties': False,
+}
+
+
+def musterantwort(client, technik, ausgangsargument, herkunft, beste_fassung):
+    eingabe = (
+        f'Technik: {technik}\n'
+        f'Ausgangsargument: {ausgangsargument}\n'
+        f'Herkunft des Ausgangsarguments: {herkunft}\n'
+        f'Beste eigene Fassung des Schuelers: {beste_fassung}'
+    )
+    antwort = client.responses.create(
+        model=MODELL,
+        instructions=ANWEISUNG_MUSTER.format(wissensbasis=wissensbasis()),
+        input=eingabe,
+        text={'format': {
+            'type': 'json_schema',
+            'name': 'trainer_musterantwort',
+            'schema': SCHEMA_MUSTER,
+            'strict': True,
+        }},
+    )
+    return json.loads(antwort.output_text)
+
+
+# ---------------------------------------------------------------------------
+# 3 - Lernbilanz
+# ---------------------------------------------------------------------------
+
+ANWEISUNG_BILANZ = '''
+Du schreibst eine kurze Lernbilanz fuer einen Berufsschueler, der sich auf eine
+Fishbowl-Diskussion vorbereitet.
+
+1. "staerke": ein Satz darueber, was dieser Schueler beim Kontern schon gut kann.
+2. "naechster_schritt": ein Satz, woran er in der Diskussion denken soll. Konkret
+   und anwendbar, keine allgemeine Ermahnung.
+3. "merksatz": ein kurzer Satz zum Merken, hoechstens zwoelf Woerter.
+4. Einfache Sprache, du-Form. Keine Emojis, kein Markdown.
+5. Beziehe dich auf das, was tatsaechlich passiert ist. Erfinde keine Fortschritte.
+6. Valides JSON nach Schema.
+'''
+
+SCHEMA_BILANZ = {
+    'type': 'object',
+    'properties': {
+        'staerke': {'type': 'string'},
+        'naechster_schritt': {'type': 'string'},
+        'merksatz': {'type': 'string'},
+    },
+    'required': ['staerke', 'naechster_schritt', 'merksatz'],
+    'additionalProperties': False,
+}
+
+
+def lernbilanz(client, geuebte_techniken, beste_erwiderung, ausgangsargument,
+               technik, kriterium, rolle):
+    eingabe = (
+        f'Geuebte Techniken: {", ".join(geuebte_techniken)}\n'
+        f'Beste Erwiderung: {beste_erwiderung}\n'
+        f'Zugehoeriges Ausgangsargument: {ausgangsargument}\n'
+        f'Verwendete Technik: {technik}\n'
+        f'Genanntes Kriterium: {kriterium or "keines"}\n'
+        f'Rolle: {rolle}'
+    )
+    antwort = client.responses.create(
+        model=MODELL,
+        instructions=ANWEISUNG_BILANZ,
+        input=eingabe,
+        text={'format': {
+            'type': 'json_schema',
+            'name': 'trainer_bilanz',
+            'schema': SCHEMA_BILANZ,
+            'strict': True,
+        }},
+    )
+    return json.loads(antwort.output_text)
