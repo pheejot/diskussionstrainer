@@ -17,7 +17,7 @@ from argumente import (ARGUMENTE, ARGUMENT_NACH_ID, ROLLEN, TECHNIKEN,
                        TECHNIK_ANZEIGE, TECHNIK_LABEL, argument_text)
 
 LEITFRAGE = 'Sollten in Deutschland bundesweite Volksentscheide eingeführt werden?'
-SITZUNGSLIMIT = 12          # KI-Antworten pro Schuelersitzung
+SITZUNGSLIMIT = 16          # KI-Antworten pro Schuelersitzung (inkl. Hilfe)
 TAGESGRENZE = 400           # KI-Antworten pro Tag fuer die gesamte App
 
 st.set_page_config(page_title='Diskussionstrainer', page_icon='🗣️', layout='centered')
@@ -158,6 +158,9 @@ STARTWERTE = {
     'ueberarbeitung': '',
     'fb': None,
     'fb2': None,
+    'hilfestufe': 0,
+    'hilfe': None,
+    'erwiderung_feld': '',
     'muster': None,
     'bilanz': None,
     'ki_aufrufe': 0,
@@ -195,10 +198,13 @@ def sichere_durchgang():
 def neue_uebung(technik_behalten: bool, ziel: str = ''):
     """Durchgang sichern, Felder leeren und weitergehen."""
     sichere_durchgang()
-    for k in ('ausgangsargument', 'herkunft', 'erwiderung', 'ueberarbeitung'):
+    for k in ('ausgangsargument', 'herkunft', 'erwiderung', 'ueberarbeitung',
+              'erwiderung_feld'):
         st.session_state[k] = ''
-    for k in ('fb', 'fb2', 'muster'):
+    st.session_state.pop('ueberarbeitung_feld', None)
+    for k in ('fb', 'fb2', 'muster', 'hilfe'):
         st.session_state[k] = None
+    st.session_state.hilfestufe = 0
     if not technik_behalten:
         st.session_state.technik = ''
     gehe_zu(ziel or ('argument' if technik_behalten else 'technik'))
@@ -422,9 +428,34 @@ elif st.session_state.schritt == 'erwiderung':
     rollenhinweis()
     restanzeige()
 
+    # Gestufte Hilfe auf Abruf - vor dem Schreiben
+    h = st.session_state.hilfe
+    if h:
+        karte('Tipp' if h['stufe'] == 1 else 'So könnte eine Erwiderung aussehen',
+              h['inhalt'])
+        if h.get('hinweis'):
+            st.info(h['hinweis'])
+
+    stufe = st.session_state.hilfestufe
+    if stufe < 2:
+        beschriftung = ('Ich brauche einen Tipp' if stufe == 0
+                        else 'Ich komme immer noch nicht weiter')
+        if st.button(beschriftung, key='hilfe_btn', use_container_width=True):
+            with st.spinner('Einen Moment …'):
+                neu_h = rufe_ki(trainer.hilfe,
+                                TECHNIK_ANZEIGE[st.session_state.technik],
+                                st.session_state.ausgangsargument,
+                                st.session_state.herkunft,
+                                stufe + 1)
+            if neu_h:
+                st.session_state.hilfe = neu_h
+                st.session_state.hilfestufe = stufe + 1
+            st.rerun()
+
+    # Das Feld braucht einen Key, sonst geht der getippte Text beim
+    # Hilfe-Knopf verloren.
     text = st.text_area('Erwiderung', height=150, max_chars=700,
-                        label_visibility='collapsed',
-                        value=st.session_state.erwiderung,
+                        label_visibility='collapsed', key='erwiderung_feld',
                         placeholder='Deine Antwort in ein bis zwei Sätzen …')
 
     with st.expander('Satzanfänge, wenn du nicht weiterkommst'):
@@ -448,7 +479,8 @@ elif st.session_state.schritt == 'erwiderung':
                              st.session_state.ausgangsargument,
                              st.session_state.herkunft,
                              st.session_state.rolle,
-                             False, '', st.session_state.erwiderung)
+                             False, '', st.session_state.erwiderung,
+                             ['keine', 'Tipp', 'Formulierung'][st.session_state.hilfestufe])
             if fb:
                 st.session_state.fb = fb
                 gehe_zu('feedback')
@@ -492,9 +524,14 @@ elif st.session_state.schritt == 'feedback':
     if fb.get('lob'):
         st.write(fb['lob'])
 
-    hinweise = [h for h in (fb.get('hinweis_1'), fb.get('hinweis_2')) if h]
-    for i, h in enumerate(hinweise, 1):
-        st.markdown(f'**{i}.** {h}')
+    vorschlaege = [h for h in (fb.get('hinweis_1'), fb.get('hinweis_2')) if h]
+    if vorschlaege:
+        st.markdown('#### So machst du es besser')
+        for i, v in enumerate(vorschlaege, 1):
+            st.markdown(f'**{i}.** {v}')
+
+    if fb.get('formulierungshilfe'):
+        karte('Fang so an und schreib selbst weiter', fb['formulierungshilfe'])
 
     for beleg in fb.get('ungepruefte_belege', []):
         st.caption(f'Diesen Beleg konnte ich im Materialpool nicht finden: {beleg}')
@@ -503,9 +540,11 @@ elif st.session_state.schritt == 'feedback':
 
     if not zweite_runde:
         st.markdown('#### Überarbeite deine Erwiderung')
+        st.session_state.setdefault('ueberarbeitung_feld',
+                                    st.session_state.erwiderung)
         neu = st.text_area('Überarbeitung', height=150, max_chars=700,
                            label_visibility='collapsed',
-                           value=st.session_state.erwiderung)
+                           key='ueberarbeitung_feld')
         if st.button('Überarbeitung prüfen lassen', type='primary', use_container_width=True):
             if neu.strip() == st.session_state.erwiderung:
                 st.error('Ändere zuerst etwas an deinem Text.')
@@ -520,7 +559,8 @@ elif st.session_state.schritt == 'feedback':
                                   st.session_state.herkunft,
                                   st.session_state.rolle,
                                   True, st.session_state.erwiderung,
-                                  st.session_state.ueberarbeitung)
+                                  st.session_state.ueberarbeitung,
+                                  ['keine', 'Tipp', 'Formulierung'][st.session_state.hilfestufe])
                 if fb2:
                     st.session_state.fb2 = fb2
                 st.rerun()

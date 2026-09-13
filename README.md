@@ -13,7 +13,7 @@ Einsatz: Selbstlernen zwischen B03 Teil 2 und der Fishbowl-Diskussion in B04, et
 | Datei | Inhalt |
 | --- | --- |
 | `app.py` | Oberfläche und Ablaufsteuerung |
-| `trainer.py` | die drei KI-Aufrufe mit Systemanweisung und JSON-Schema |
+| `trainer.py` | die vier KI-Aufrufe mit Systemanweisung und JSON-Schema |
 | `argumente.py` | die vier Techniken, die 19 Pool-Argumente, die fünf Rollen |
 | `wissensbasis.md` | verdichteter Materialpool, geht in jeden KI-Aufruf |
 | `requirements.txt` | Streamlit und das OpenAI-SDK |
@@ -54,7 +54,7 @@ FREIGABE_ENDE = "2026-09-17"
 **Limits.** Oben in `app.py`:
 
 ```python
-SITZUNGSLIMIT = 12   # KI-Antworten pro Schülersitzung
+SITZUNGSLIMIT = 16   # KI-Antworten pro Schülersitzung (Feedback + Hilfe)
 TAGESGRENZE  = 400   # KI-Antworten pro Tag für die gesamte App
 ```
 
@@ -62,9 +62,21 @@ TAGESGRENZE  = 400   # KI-Antworten pro Tag für die gesamte App
 
 ---
 
+## Zwei Hilfen für schwächere Schüler
+
+**Gestufte Hilfe vor dem Schreiben.** Wer nicht weiterkommt, klickt auf „Ich brauche einen Tipp" und bekommt einen Denkanstoß — wo die Technik an diesem Argument greift, als Frage formuliert, ohne fertigen Satz. Erst ein zweiter Klick („Ich komme immer noch nicht weiter") liefert eine ausformulierte Erwiderung, verbunden mit der Aufforderung, dasselbe in eigenen Worten zu schreiben. Dieselbe Logik wie die Hilfekarten in B03 Teil 1: Differenzierung auf Abruf, nicht auf Vorrat.
+
+Die App merkt sich, welche Stufe geholt wurde, und gibt das an die Rückmeldung weiter. Wer die Formulierung fast wortgleich abschreibt, wird freundlich darauf hingewiesen — ohne Abwertung.
+
+**Verbesserungsvorschläge nach der Rückmeldung.** Unter den Ampeln steht „So machst du es besser" mit ein bis zwei konkreten Vorschlägen: was zu ergänzen ist und grob mit welchem Inhalt, wo möglich aus der Wissensbasis. Dazu eine **Formulierungshilfe** — ein angefangener Satz, zugeschnitten auf genau diese Antwort, den der Schüler selbst zu Ende schreibt.
+
+Die Abstufung bleibt dabei erhalten: Vorschlag → angefangener Satz → gestufte Hilfe → Musterantwort. Eine vollständige Musterantwort gibt es weiterhin erst nach dem eigenen Überarbeitungsversuch.
+
+---
+
 ## Was die App kostet
 
-Pro Aufruf gehen rund 10.100 Tokens konstante Vorlage hinein (Anweisung plus Wissensbasis), dazu etwa 200 Tokens Schülertext; heraus kommen 400 bis 1.000 Tokens. Bei 20 Schülern und höchstens 12 Rückmeldungen je Sitzung liegt das Ganze mit GPT-5.6 Luna zwischen etwa 0,10 und 0,75 Euro für die Klasse. Klassencode und Limits sind deshalb Missbrauchsschutz, keine Kostenbremse.
+Pro Aufruf gehen rund 10.100 Tokens konstante Vorlage hinein (Anweisung plus Wissensbasis), dazu etwa 200 Tokens Schülertext; heraus kommen 400 bis 1.000 Tokens. Bei 20 Schülern und höchstens 16 Rückmeldungen je Sitzung liegt das Ganze mit GPT-5.6 Luna zwischen etwa 0,10 und 0,75 Euro für die Klasse. Klassencode und Limits sind deshalb Missbrauchsschutz, keine Kostenbremse.
 
 ---
 

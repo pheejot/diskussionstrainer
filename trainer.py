@@ -72,9 +72,21 @@ REGELN
    Fehlender Beleg oder fehlendes Kriterium ergibt gelb, niemals rot.
 2. BEZUG hat Vorrang. Ist ampel_bezug rot, richten sich BEIDE Hinweise auf den
    Bezug; Technik und Qualitaet werden dann nicht zusaetzlich bemaengelt.
-3. Hoechstens zwei Hinweise. Jeder Hinweis ist EIN Satz und sagt konkret, was zu
-   tun ist - nicht nur, was fehlt. Brauchst du nur einen Hinweis, lass hinweis_2
-   leer. Bei drei gruenen Ampeln darf auch hinweis_1 leer bleiben.
+3. Hoechstens zwei VERBESSERUNGSVORSCHLAEGE (hinweis_1, hinweis_2). Jeder ist
+   EIN Satz und sagt, was der Schueler ERGAENZEN oder AENDERN soll - und grob
+   mit welchem Inhalt. Nicht nur benennen, was fehlt.
+   Schlecht: "Dir fehlt ein Beleg."
+   Gut: "Nimm das Schweizer Abstimmungsheft als Beleg dazu - es zeigt, dass
+   Information organisiert werden kann."
+   Nimm die Inhalte fuer die Vorschlaege aus der Wissensbasis, wo das passt.
+   Liefere aber NIE einen fertig formulierten Satz zum Abschreiben.
+   Brauchst du nur einen Vorschlag, lass hinweis_2 leer. Bei drei gruenen
+   Ampeln darf auch hinweis_1 leer bleiben.
+3a. "formulierungshilfe": EIN Satzanfang, zugeschnitten auf genau diese Antwort,
+   den der Schueler selbst weiterschreibt - zum Beispiel "Das gilt allerdings
+   nur, wenn ..." oder "Fuer die politische Gleichheit bedeutet das ...".
+   Hoere mitten im Satz auf. Schreibe den Satz NICHT zu Ende. Leer lassen, wenn
+   alle drei Ampeln gruen sind.
 4. Beginne immer mit "lob": ein Satz darueber, was tatsaechlich traegt. Erfinde
    kein Lob; wenn nichts traegt, benenne den kleinsten erkennbaren Ansatz.
 5. Bewerte NIEMALS die politische Position. Pro und Kontra sind gleichermassen
@@ -103,17 +115,21 @@ REGELN
     geworden, sage das sachlich. Bei der ersten Fassung bleibt das Feld leer.
 13. Die Rolle des Schuelers ist Zusatzinformation. Sie wird NICHT bewertet. Werte
     kein Kriterium ab, nur weil es nicht zu seiner Rolle gehoert.
-14. Trage in "genanntes_kriterium" nur eines der elf Kriterien ein, und nur wenn
+14. Im Eingabefeld steht, welche Hilfe der Schueler vorher geholt hat. Wurde
+    "Formulierung" genutzt und ist seine Antwort fast wortgleich mit einer
+    vorgegebenen Formulierung, sage ihm das freundlich in hinweis_1 und bitte
+    ihn, es in eigene Worte zu fassen. Werte die Antwort deswegen nicht ab.
+15. Trage in "genanntes_kriterium" nur eines der elf Kriterien ein, und nur wenn
     der Schueler es tatsaechlich nennt oder sein Inhalt eindeutig darauf zielt.
     Sonst leerer String.
 
 SPRACHE
 
-15. Einfache Sprache. Kurze Saetze, du-Form, keine Schachtelsaetze.
-16. Fachbegriffe nur, wenn noetig, und dann mit einer Kurzerklaerung in Klammern.
-17. Keine Emojis, keine Ampelsymbole, keine Aufzaehlungszeichen, kein Markdown.
+16. Einfache Sprache. Kurze Saetze, du-Form, keine Schachtelsaetze.
+17. Fachbegriffe nur, wenn noetig, und dann mit einer Kurzerklaerung in Klammern.
+18. Keine Emojis, keine Ampelsymbole, keine Aufzaehlungszeichen, kein Markdown.
     Die App setzt die Darstellung.
-18. Liefere valides JSON nach dem vorgegebenen Schema.
+19. Liefere valides JSON nach dem vorgegebenen Schema.
 
 WISSENSBASIS
 {wissensbasis}
@@ -142,7 +158,11 @@ SCHEMA_FEEDBACK = {
         'ampel_qualitaet': {'type': 'string', 'enum': AMPEL},
         'lob': {'type': 'string'},
         'hinweis_1': {'type': 'string'},
-        'hinweis_2': {'type': 'string', 'description': 'Leer, wenn ein Hinweis reicht.'},
+        'hinweis_2': {'type': 'string', 'description': 'Leer, wenn ein Vorschlag reicht.'},
+        'formulierungshilfe': {
+            'type': 'string',
+            'description': 'Ein angefangener Satz zum Weiterschreiben. Leer bei drei gruenen Ampeln.',
+        },
         'erkannte_technik': {
             'type': 'string',
             'enum': ['anders deuten', 'einschraenken', 'entkraeften', 'gewichten', 'keine'],
@@ -157,6 +177,7 @@ SCHEMA_FEEDBACK = {
     'required': [
         'verstaendnisfrage', 'technik_passt', 'technik_hinweis', 'ampel_bezug',
         'ampel_technik', 'ampel_qualitaet', 'lob', 'hinweis_1', 'hinweis_2',
+        'formulierungshilfe',
         'erkannte_technik', 'genanntes_kriterium', 'ungepruefte_belege',
         'veraenderung',
     ],
@@ -165,7 +186,8 @@ SCHEMA_FEEDBACK = {
 
 
 def feedback(client, technik, ausgangsargument, herkunft, rolle,
-             ist_ueberarbeitung, vorige_fassung, erwiderung):
+             ist_ueberarbeitung, vorige_fassung, erwiderung,
+             hilfe_genutzt='keine'):
     eingabe = (
         f'Technik: {technik}\n'
         f'Ausgangsargument: {ausgangsargument}\n'
@@ -173,6 +195,7 @@ def feedback(client, technik, ausgangsargument, herkunft, rolle,
         f'Rolle des Schuelers: {rolle}\n'
         f'Durchgang: {"Ueberarbeitung" if ist_ueberarbeitung else "erste Fassung"}\n'
         f'Vorige Fassung: {vorige_fassung or ""}\n'
+        f'Vorher geholte Hilfe: {hilfe_genutzt}\n'
         f'Erwiderung des Schuelers: {erwiderung}'
     )
     antwort = client.responses.create(
@@ -296,6 +319,82 @@ def lernbilanz(client, geuebte_techniken, beste_erwiderung, ausgangsargument,
             'type': 'json_schema',
             'name': 'trainer_bilanz',
             'schema': SCHEMA_BILANZ,
+            'strict': True,
+        }},
+    )
+    return json.loads(antwort.output_text)
+
+
+# ---------------------------------------------------------------------------
+# 4 - Gestufte Hilfe (vor dem Schreiben, auf Abruf)
+# ---------------------------------------------------------------------------
+
+ANWEISUNG_HILFE = '''
+Ein Berufsschueler kommt beim Formulieren einer Erwiderung nicht weiter. Er hat
+ein Ausgangsargument und eine Konter-Technik vor sich. Du gibst Hilfe auf der
+angegebenen Stufe - nicht mehr.
+
+STUFE 1 - Denkanstoss:
+Zeige den Ansatzpunkt, ohne etwas zu formulieren. Sage, WO an diesem Argument
+die gewaehlte Technik greift, und stelle eine Frage, die den Schueler selbst auf
+die Erwiderung bringt. Zwei Saetze, hoechstens.
+Beispiel fuer "einschraenken": "Ueberleg, fuer wen dieses Argument NICHT gilt.
+Gibt es Menschen, bei denen das anders aussieht?"
+Formuliere auf dieser Stufe KEINE Erwiderung, auch nicht in Teilen.
+
+STUFE 2 - Formulierung:
+Jetzt gibst du eine vollstaendige Erwiderung in ein bis zwei Saetzen, wie sie ein
+guter Schueler schreiben wuerde. Einfache Sprache. Danach in "hinweis" EIN Satz,
+der ihn auffordert, dasselbe in seinen eigenen Worten zu schreiben - abschreiben
+hilft ihm in der Diskussion nicht.
+
+FUER BEIDE STUFEN
+
+1. Nutze nur Inhalte aus der Wissensbasis. Erfinde keine Zahlen, Studien oder
+   Beispiele. Belege nur aus Abschnitt 7.
+2. Einfache Sprache, du-Form, kurze Saetze.
+3. Keine Emojis, kein Markdown.
+4. Gib in "stufe" die Stufe zurueck, die du bedient hast.
+5. Auf Stufe 1 bleibt "hinweis" leer.
+6. Valides JSON nach Schema.
+
+WISSENSBASIS
+{wissensbasis}
+'''
+
+SCHEMA_HILFE = {
+    'type': 'object',
+    'properties': {
+        'stufe': {'type': 'integer', 'enum': [1, 2]},
+        'inhalt': {
+            'type': 'string',
+            'description': 'Stufe 1: der Denkanstoss. Stufe 2: die formulierte Erwiderung.',
+        },
+        'hinweis': {
+            'type': 'string',
+            'description': 'Nur Stufe 2: Aufforderung, es in eigene Worte zu fassen.',
+        },
+    },
+    'required': ['stufe', 'inhalt', 'hinweis'],
+    'additionalProperties': False,
+}
+
+
+def hilfe(client, technik, ausgangsargument, herkunft, stufe):
+    eingabe = (
+        f'Technik: {technik}\n'
+        f'Ausgangsargument: {ausgangsargument}\n'
+        f'Herkunft des Ausgangsarguments: {herkunft}\n'
+        f'Gewuenschte Hilfestufe: {stufe}'
+    )
+    antwort = client.responses.create(
+        model=MODELL,
+        instructions=ANWEISUNG_HILFE.format(wissensbasis=wissensbasis()),
+        input=eingabe,
+        text={'format': {
+            'type': 'json_schema',
+            'name': 'trainer_hilfe',
+            'schema': SCHEMA_HILFE,
             'strict': True,
         }},
     )
