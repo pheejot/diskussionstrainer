@@ -15,6 +15,7 @@ Einsatz: Selbstlernen zwischen B03 Teil 2 und der Fishbowl-Diskussion in B04, et
 | `app.py` | Oberfläche und Ablaufsteuerung |
 | `trainer.py` | die vier KI-Aufrufe mit Systemanweisung und JSON-Schema |
 | `argumente.py` | die vier Techniken, die 19 Pool-Argumente, die fünf Rollen |
+| `glossar.py` | 65 erklärte Wörter; die App markiert sie automatisch in jedem Text |
 | `wissensbasis.md` | verdichteter Materialpool, geht in jeden KI-Aufruf |
 | `requirements.txt` | Streamlit und das OpenAI-SDK |
 | `.streamlit/secrets.toml.example` | Vorlage für die Einstellungen |
@@ -25,7 +26,7 @@ Einsatz: Selbstlernen zwischen B03 Teil 2 und der Fishbowl-Diskussion in B04, et
 
 1. Repository auf GitHub anlegen und die Dateien hochladen.
 
-   `app.py`, `trainer.py`, `argumente.py`, `wissensbasis.md`, `requirements.txt`, `README.md` und `.gitignore` lassen sich per Drag-and-drop hochladen.
+   `app.py`, `trainer.py`, `argumente.py`, `glossar.py`, `wissensbasis.md`, `requirements.txt`, `README.md` und `.gitignore` lassen sich per Drag-and-drop hochladen.
 
    Für den Ordner `.streamlit` geht das nicht: **Add file → Create new file**, als Dateinamen `.streamlit/config.toml` eintippen — der Schrägstrich legt den Ordner mit an — Inhalt einfügen, **Commit**. Dasselbe für `.streamlit/secrets.toml.example`.
 
@@ -74,9 +75,70 @@ Die Abstufung bleibt dabei erhalten: Vorschlag → angefangener Satz → gestuft
 
 ---
 
+## Glossar zum Antippen
+
+Wörter, die die Lerngruppe vermutlich nicht kennt, sind in allen KI-Texten **automatisch markiert**: blau, gepunktet unterstrichen, mit einem kleinen Fragezeichen. Ein Tipp darauf klappt eine kurze Erklärung auf, ein zweiter schließt sie wieder. Das ist natives HTML (`<details>`), kein JavaScript — funktioniert auf dem iPad ohne Hover und ohne Umwege.
+
+Die Liste in `glossar.py` setzt **bewusst niedriger an als das Glossar im Materialpool**: Dort steht „Quorum", aber nicht „Votum", „Vorlage" oder „Frist". Genau solche Wörter kosten eine leseschwache Lerngruppe den Anschluss.
+
+**Ergänzen ist einfach.** In `glossar.py` eine Zeile in das `GLOSSAR`-Wörterbuch eintragen:
+
+```python
+'Legislaturperiode': 'Die Zeit, für die ein Parlament gewählt ist. In Deutschland vier Jahre.',
+```
+
+Mehr ist nicht nötig — die App findet das Wort danach in jedem Text von selbst, auch in gebeugten Formen wie „Fristen" oder „Argumente". Unregelmäßige Mehrzahlen (Kriterium → Kriterien, Quorum → Quoren) stehen im `ALIASE`-Wörterbuch darunter.
+
+Zwei Regeln für die Erklärungen: ein bis zwei kurze Sätze, und **kein Fachwort in der Erklärung**, das selbst wieder erklärt werden müsste. Jeder Begriff wird pro Textblock nur beim ersten Vorkommen markiert.
+
+**Nach einer Änderung an `glossar.py` die App rebooten** (siehe unten).
+
+---
+
+## Verweise in den Materialpool
+
+An zwei Stellen kann der Schüler direkt im veröffentlichten Materialpool nachschlagen: im Schreibschritt unter dem Eingabefeld und noch einmal unter der Rückmeldung. Der Bereich heißt „Im Materialpool nachschlagen" und ist zugeklappt, damit er nicht ablenkt.
+
+Darin stehen, sofern das Ausgangsargument aus dem Pool stammt:
+
+- **Dieses Argument im Materialpool** — die vollständige Seite mit Beleg und Gegenstrang
+- **Was die Gegenseite sagt** — die Seite des Gegenstrangs, automatisch passend zum gewählten Argument
+
+Dazu immer: die vier Techniken, alle Kriterien und Argumente, und die Ausgestaltungsseite. Hat die KI ein Kriterium erkannt, erscheint außerdem ein direkter Verweis darauf.
+
+**Alle Verweise öffnen einen neuen Tab** (`target="_blank"`). Das ist keine Kosmetik: Streamlit hält den Sitzungszustand nur im geöffneten Tab. Würde der Link die Seite ersetzen, wäre beim Zurückgehen die halbfertige Erwiderung verloren.
+
+**Zwei Dinge zum Wissen:**
+
+Auf den Argumentseiten des Vaults steht die **Erwiderungsidee im Klartext**. Wer während des Schreibens dorthin klickt, findet dort eine mögliche Lösung. Das ist eine bewusste Entscheidung — der Materialpool ist das Rechercheinstrument der Einheit, und Nachschlagen ist selbst eine Kompetenz. Soll das enger geführt werden, lassen sich die beiden argumentbezogenen Verweise in `materialpool_block()` an `st.session_state.fb` koppeln, also erst nach dem ersten Feedback zeigen.
+
+**Ordner-Adressen funktionieren nicht.** `…/02_ARGUMENTE` gibt „This page does not exist" — Obsidian Publish liefert nur einzelne Notizen aus. Als Sammeleinstieg dient deshalb `00_START/00_LEITFRAGE`, wo alle Kriterien mit ihren Argumenten verlinkt sind.
+
+Die Pfade stehen in `argumente.py`: `pfad` und `gegen` je Argument, dazu `KRITERIEN_PFAD` und `POOL_SEITEN`. Ändern sich Dateinamen im Vault, müssen sie hier nachgezogen werden.
+
+---
+
+## Emojis
+
+Jeder Schritt, jeder Knopf und jede Karte trägt ein Symbol — als Orientierungsanker für eine Lerngruppe, die ungern liest. Die vier Techniken haben feste Zeichen, die im ganzen Trainer gleich bleiben: 🔄 anders deuten, ✂️ einschränken, 🎯 entkräften, ⚖️ gewichten. Sie stehen als `emoji` bei den Techniken in `argumente.py`.
+
+**Die KI setzt keine Emojis** — Regel 18 in `trainer.py` verbietet es weiterhin. Alle Symbole kommen aus der App. Das hält sie einheitlich und verhindert, dass in einer Rückmeldung plötzlich ein Daumen hoch oder ein trauriges Gesicht auftaucht.
+
+**Bewusst ohne Symbol: die Rollen.** AfD, Mehr Demokratie e. V., CDU und Sozialverband stehen ohne Emoji da. Ein Symbol neben einem Parteinamen liest sich schnell als Bewertung, und im Politikunterricht ist das eine Grenze, die nicht gerissen werden sollte. Auch die Ampeln bleiben als farbige Punkte gezeichnet statt als 🟢🟡🔴 — das ist ruhiger und trägt die Beschriftung mit.
+
+---
+
 ## Was die App kostet
 
 Pro Aufruf gehen rund 10.100 Tokens konstante Vorlage hinein (Anweisung plus Wissensbasis), dazu etwa 200 Tokens Schülertext; heraus kommen 400 bis 1.000 Tokens. Bei 20 Schülern und höchstens 16 Rückmeldungen je Sitzung liegt das Ganze mit GPT-5.6 Luna zwischen etwa 0,10 und 0,75 Euro für die Klasse. Klassencode und Limits sind deshalb Missbrauchsschutz, keine Kostenbremse.
+
+---
+
+## Nach jeder Änderung an einem Modul: Reboot
+
+Streamlit Community Cloud zieht Änderungen aus GitHub automatisch nach, führt dabei aber nur `app.py` neu aus. **Importierte Module — `trainer.py`, `argumente.py` — bleiben in ihrer alten Fassung im Speicher.** Die App läuft dann mit einer Mischung aus alt und neu und wirft Fehler, die in die Irre führen (etwa `module 'trainer' has no attribute ...`).
+
+Deshalb: Wurde etwas anderes als `app.py` geändert — also `trainer.py`, `argumente.py` oder `glossar.py` —, in der App unten rechts auf **Manage app** → Drei-Punkte-Menü → **Reboot app**. Dauert etwa eine Minute.
 
 ---
 

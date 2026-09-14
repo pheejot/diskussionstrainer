@@ -13,8 +13,10 @@ from datetime import date, datetime
 import streamlit as st
 
 import trainer
-from argumente import (ARGUMENTE, ARGUMENT_NACH_ID, ROLLEN, TECHNIKEN,
-                       TECHNIK_ANZEIGE, TECHNIK_LABEL, argument_text)
+from glossar import markiere
+from argumente import (ARGUMENTE, ARGUMENT_NACH_ID, KRITERIEN_PFAD, POOL_SEITEN,
+                       ROLLEN, TECHNIKEN, TECHNIK_ANZEIGE, TECHNIK_LABEL,
+                       argument_text, gegenstrang, vault_url)
 
 LEITFRAGE = 'Sollten in Deutschland bundesweite Volksentscheide eingeführt werden?'
 SITZUNGSLIMIT = 16          # KI-Antworten pro Schuelersitzung (inkl. Hilfe)
@@ -54,6 +56,52 @@ st.markdown(
       .ampel .name { font-weight: 600; min-width: 8.5rem; color: #0F2C5C; }
       .ampel .wert { color: #5A6B85; font-size: .95rem; }
       .schrittzeile { color: #5A6B85; font-size: .85rem; margin-bottom: .2rem; }
+
+      /* Verweise in den Materialpool - sehen aus wie Knoepfe, oeffnen aber
+         einen neuen Tab, damit die Trainer-Sitzung erhalten bleibt. */
+      a.poollink {
+          display: block; text-decoration: none; text-align: left;
+          border: 1px solid #4C94D8; background: #FFFFFF; color: #1F4E79;
+          border-radius: 10px; padding: .7rem .9rem; margin-bottom: .4rem;
+          font-weight: 600; font-size: 1.02rem; line-height: 1.35;
+      }
+      a.poollink:hover { background: #E3EDF9; }
+      a.poollink .extern { float: right; color: #5A6B85; font-weight: 400; }
+
+      /* Glossar: angetipptes Wort klappt eine Erklaerung auf.
+         <details> ist ein natives HTML-Element - funktioniert auf dem iPad
+         ohne JavaScript und ohne Hover. */
+      /* inline-block statt inline: Chrome erzwingt hinter einem <details>
+         sonst einen Zeilenumbruch, auch wenn die Zeile noch Platz hat.
+         Beim Aufklappen wird daraus ein Block, damit die Erklaerung die
+         volle Breite bekommt. */
+      details.gl { display: inline-block; vertical-align: baseline; }
+      details.gl[open] { display: block; margin: .15rem 0 .1rem 0; }
+      details.gl > summary {
+          display: inline; cursor: pointer; list-style: none;
+          color: #1F4E79; font-weight: 600;
+          border-bottom: 2px dotted #4C94D8;
+      }
+      details.gl > summary::-webkit-details-marker { display: none; }
+      details.gl > summary::marker { content: ''; }
+      /* kleines Fragezeichen: zeigt, dass man tippen kann */
+      details.gl > summary::after {
+          content: '?'; font-size: .62em; font-weight: 700;
+          vertical-align: super; margin-left: .12em; color: #4C94D8;
+      }
+      details.gl[open] > summary { background: #E3EDF9; }
+      details.gl[open] > summary::after { content: '×'; font-size: .8em;
+          vertical-align: baseline; color: #5A6B85; }
+      /* Im zugeklappten Zustand darf die Erklaerung KEINEN Platz belegen -
+         sonst bricht der Satz an jedem Glossarwort um. */
+      .gl-text { display: none; }
+      details.gl[open] > .gl-text {
+          display: block; margin: .25rem 0 .3rem 1.1rem;
+          padding: .45rem .7rem;
+          background: #FFFFFF; border-left: 4px solid #4C94D8;
+          border-radius: 0 6px 6px 0;
+          font-size: .93rem; line-height: 1.4; color: #3A4A63; font-weight: 400;
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -63,12 +111,48 @@ FARBE = {'gruen': '#2E7D32', 'gelb': '#F0A202', 'rot': '#C62828'}
 WORT = {'gruen': 'passt', 'gelb': 'geht noch besser', 'rot': 'hier ansetzen'}
 
 
-def karte(label: str, inhalt: str):
+def karte(label: str, inhalt: str, glossar: bool = True):
+    """Karte mit Label. Glossarwoerter werden automatisch antippbar."""
+    text = markiere(inhalt) if glossar else inhalt
     st.markdown(
         f'<div class="karte"><div class="label">{label}</div>'
-        f'<div class="inhalt">{inhalt}</div></div>',
+        f'<div class="inhalt">{text}</div></div>',
         unsafe_allow_html=True,
     )
+
+
+def satz(inhalt: str, praefix: str = ''):
+    """Fliesstext mit antippbaren Glossarwoertern."""
+    if not inhalt:
+        return
+    st.markdown(f'<div class="inhalt">{praefix}{markiere(inhalt)}</div>',
+                unsafe_allow_html=True)
+
+
+def poollink(beschriftung: str, pfad: str):
+    """Ein Verweis in den Materialpool. Oeffnet IMMER einen neuen Tab -
+    sonst verlaesst der Schueler den Trainer und seine Sitzung ist weg."""
+    st.markdown(
+        f'<a class="poollink" href="{vault_url(pfad)}" target="_blank" '
+        f'rel="noopener">{beschriftung}<span class="extern">↗</span></a>',
+        unsafe_allow_html=True,
+    )
+
+
+def materialpool_block(arg_id: str = ''):
+    """Aufklappbarer Bereich mit Verweisen in den Materialpool."""
+    with st.expander('📖 Im Materialpool nachschlagen'):
+        if arg_id and arg_id in ARGUMENT_NACH_ID:
+            poollink('Dieses Argument im Materialpool',
+                     ARGUMENT_NACH_ID[arg_id]['pfad'])
+            gegen = gegenstrang(arg_id)
+            if gegen:
+                poollink(f'Was die Gegenseite sagt: {gegen[0]}', gegen[1])
+        for schluessel in ('techniken', 'kriterien', 'ausgestaltung'):
+            beschriftung, pfad = POOL_SEITEN[schluessel]
+            poollink(beschriftung, pfad)
+        st.caption('Öffnet sich in einem neuen Tab. Der Trainer bleibt offen – '
+                   'wechsle einfach zurück, deine Antwort ist noch da.')
 
 
 def ampel(name: str, wert: str):
@@ -331,7 +415,9 @@ if st.session_state.schritt == 'rolle':
     st.title('Diskussionstrainer')
     st.write('Du übst hier, auf ein Argument der Gegenseite zu antworten. '
              'Das brauchst du in der Diskussion.')
-    kopf('Welche Rolle hast du in der Diskussion?')
+    satz('Wörter mit einer gepunkteten Linie kannst du antippen. Dann erscheint '
+         'eine kurze Erklärung – zum Beispiel bei Votum oder Quorum.')
+    kopf('🙋 Welche Rolle hast du in der Diskussion?')
     st.caption('Deine Rolle wird nur angezeigt. Sie wird nicht bewertet.')
     for name in ROLLEN:
         beschriftung = 'Ich habe noch keine Rolle' if name == 'ohne Rolle' else name
@@ -347,16 +433,17 @@ if st.session_state.schritt == 'rolle':
 # ---------------------------------------------------------------------------
 
 elif st.session_state.schritt == 'technik':
-    kopf('Welche Technik willst du üben?')
+    kopf('🛠️ Welche Technik willst du üben?')
     rollenhinweis()
     for anzeige, schluessel in TECHNIK_LABEL.items():
-        if st.button(anzeige, key=f'tech_{schluessel}', use_container_width=True):
+        if st.button(f"{TECHNIKEN[schluessel]['emoji']}  {anzeige}",
+                     key=f'tech_{schluessel}', use_container_width=True):
             st.session_state.technik = schluessel
             gehe_zu('argument')
-    with st.expander('Was bedeuten die vier Techniken?'):
+    with st.expander('🛠️ Was bedeuten die vier Techniken?'):
         for anzeige, schluessel in TECHNIK_LABEL.items():
             t = TECHNIKEN[schluessel]
-            st.markdown(f'**{anzeige}** – {t["leitfrage"]}')
+            st.markdown(f'{t["emoji"]} **{anzeige}** – {t["leitfrage"]}')
             st.caption(t['erklaerung'])
 
 
@@ -366,9 +453,9 @@ elif st.session_state.schritt == 'technik':
 
 elif st.session_state.schritt == 'argument':
     t = TECHNIKEN[st.session_state.technik]
-    kopf(TECHNIK_ANZEIGE[st.session_state.technik])
+    kopf(f"{t['emoji']} {TECHNIK_ANZEIGE[st.session_state.technik]}")
     karte('So geht das', t['erklaerung'])
-    karte('Beispiel', t['beispiel'])
+    karte('💡 Beispiel', t['beispiel'])
 
     st.markdown('---')
     st.markdown('#### Auf welches Argument willst du antworten?')
@@ -392,16 +479,16 @@ elif st.session_state.schritt == 'argument':
     with tab_pool:
         st.write('Wähle ein Argument aus dem Materialpool.')
         seite = st.radio('Seite', ['pro', 'kontra'], horizontal=True,
-                         format_func=lambda s: 'Pro Volksentscheide'
-                         if s == 'pro' else 'Kontra Volksentscheide')
-        auswahl = [a for a in ARGUMENTE if a[1] == seite]
+                         format_func=lambda s: '➕ Pro Volksentscheide'
+                         if s == 'pro' else '➖ Kontra Volksentscheide')
+        auswahl = [a for a in ARGUMENTE if a['seite'] == seite]
         gewaehlt = st.radio(
             'Argument',
-            [a[0] for a in auswahl],
-            format_func=lambda i: ARGUMENT_NACH_ID[i][2],
+            [a['id'] for a in auswahl],
+            format_func=lambda i: ARGUMENT_NACH_ID[i]['titel'],
             label_visibility='collapsed',
         )
-        karte('Das Argument', argument_text(gewaehlt))
+        karte('💬 Das Argument', argument_text(gewaehlt))
         if st.button('Weiter mit diesem Argument', type='primary', key='pool_weiter', use_container_width=True):
             st.session_state.ausgangsargument = argument_text(gewaehlt)
             st.session_state.herkunft = gewaehlt
@@ -418,9 +505,9 @@ elif st.session_state.schritt == 'argument':
 
 elif st.session_state.schritt == 'erwiderung':
     t = TECHNIKEN[st.session_state.technik]
-    kopf('Schreibe deine Erwiderung')
-    karte('Das Ausgangsargument', st.session_state.ausgangsargument)
-    karte('Deine Technik: ' + TECHNIK_ANZEIGE[st.session_state.technik],
+    kopf('✍️ Schreibe deine Erwiderung')
+    karte('💬 Das Ausgangsargument', st.session_state.ausgangsargument)
+    karte(f"{t['emoji']} Deine Technik: " + TECHNIK_ANZEIGE[st.session_state.technik],
           t['leitfrage'])
 
     st.write('Antworte auf dieses Argument mit deiner Technik. '
@@ -431,15 +518,15 @@ elif st.session_state.schritt == 'erwiderung':
     # Gestufte Hilfe auf Abruf - vor dem Schreiben
     h = st.session_state.hilfe
     if h:
-        karte('Tipp' if h['stufe'] == 1 else 'So könnte eine Erwiderung aussehen',
-              h['inhalt'])
+        karte('💡 Tipp' if h['stufe'] == 1
+              else '✍️ So könnte eine Erwiderung aussehen', h['inhalt'])
         if h.get('hinweis'):
-            st.info(h['hinweis'])
+            satz(h['hinweis'])
 
     stufe = st.session_state.hilfestufe
     if stufe < 2:
-        beschriftung = ('Ich brauche einen Tipp' if stufe == 0
-                        else 'Ich komme immer noch nicht weiter')
+        beschriftung = ('💡 Ich brauche einen Tipp' if stufe == 0
+                        else '🆘 Ich komme immer noch nicht weiter')
         if st.button(beschriftung, key='hilfe_btn', use_container_width=True):
             with st.spinner('Einen Moment …'):
                 neu_h = rufe_ki(trainer.hilfe,
@@ -458,7 +545,7 @@ elif st.session_state.schritt == 'erwiderung':
                         label_visibility='collapsed', key='erwiderung_feld',
                         placeholder='Deine Antwort in ein bis zwei Sätzen …')
 
-    with st.expander('Satzanfänge, wenn du nicht weiterkommst'):
+    with st.expander('✍️ Satzanfänge, wenn du nicht weiterkommst'):
         st.markdown(
             '- Behauptung: „Das gilt allerdings nur, wenn …"\n'
             '- Begründung: „Denn …"\n'
@@ -468,7 +555,9 @@ elif st.session_state.schritt == 'erwiderung':
         st.caption('Du musst nicht alle vier verwenden. Die Begründung ist das '
                    'Wichtigste.')
 
-    if st.button('Rückmeldung holen', type='primary', use_container_width=True):
+    materialpool_block(st.session_state.herkunft)
+
+    if st.button('🚦 Rückmeldung holen', type='primary', use_container_width=True):
         if len(text.strip()) < 15:
             st.error('Schreibe noch etwas mehr – mindestens einen ganzen Satz.')
         else:
@@ -498,43 +587,49 @@ elif st.session_state.schritt == 'erwiderung':
 elif st.session_state.schritt == 'feedback':
     fb = st.session_state.fb2 or st.session_state.fb
     zweite_runde = st.session_state.fb2 is not None
-    kopf('Deine Rückmeldung')
+    kopf('🚦 Deine Rückmeldung')
 
     if fb.get('verstaendnisfrage'):
-        karte('Eine Frage an dich', fb['verstaendnisfrage'])
+        karte('❓ Eine Frage an dich', fb['verstaendnisfrage'])
         st.write('Schreibe dein Argument noch einmal etwas deutlicher.')
         if st.button('Argument überarbeiten', type='primary', use_container_width=True):
             gehe_zu('argument')
         st.stop()
 
-    karte('Das Ausgangsargument', st.session_state.ausgangsargument)
-    karte('Deine Erwiderung',
+    karte('💬 Das Ausgangsargument', st.session_state.ausgangsargument)
+    karte('✍️ Deine Erwiderung',
           st.session_state.ueberarbeitung or st.session_state.erwiderung)
 
     if fb.get('veraenderung'):
-        st.success('Was sich verbessert hat: ' + fb['veraenderung'])
+        karte('✅ Was sich verbessert hat', fb['veraenderung'])
 
     if not fb.get('technik_passt', True) and fb.get('technik_hinweis'):
-        st.info(fb['technik_hinweis'])
+        karte('🛠️ Zu deiner Technik', fb['technik_hinweis'])
 
     ampel('Bezug zum Argument', fb.get('ampel_bezug', ''))
     ampel('Technik', fb.get('ampel_technik', ''))
     ampel('Argumentqualität', fb.get('ampel_qualitaet', ''))
 
     if fb.get('lob'):
-        st.write(fb['lob'])
+        satz(fb['lob'])
 
     vorschlaege = [h for h in (fb.get('hinweis_1'), fb.get('hinweis_2')) if h]
     if vorschlaege:
-        st.markdown('#### So machst du es besser')
+        st.markdown('#### 🔧 So machst du es besser')
         for i, v in enumerate(vorschlaege, 1):
-            st.markdown(f'**{i}.** {v}')
+            satz(v, praefix=f'<b>{i}.</b> ')
 
     if fb.get('formulierungshilfe'):
-        karte('Fang so an und schreib selbst weiter', fb['formulierungshilfe'])
+        karte('✍️ Fang so an und schreib selbst weiter', fb['formulierungshilfe'])
 
     for beleg in fb.get('ungepruefte_belege', []):
         st.caption(f'Diesen Beleg konnte ich im Materialpool nicht finden: {beleg}')
+
+    krit = fb.get('genanntes_kriterium', '')
+    if krit and krit in KRITERIEN_PFAD:
+        poollink(f'Mehr zum Kriterium {krit}', KRITERIEN_PFAD[krit])
+
+    materialpool_block(st.session_state.herkunft)
 
     st.markdown('---')
 
@@ -545,7 +640,7 @@ elif st.session_state.schritt == 'feedback':
         neu = st.text_area('Überarbeitung', height=150, max_chars=700,
                            label_visibility='collapsed',
                            key='ueberarbeitung_feld')
-        if st.button('Überarbeitung prüfen lassen', type='primary', use_container_width=True):
+        if st.button('🔁 Überarbeitung prüfen lassen', type='primary', use_container_width=True):
             if neu.strip() == st.session_state.erwiderung:
                 st.error('Ändere zuerst etwas an deinem Text.')
             elif len(neu.strip()) < 15:
@@ -568,11 +663,11 @@ elif st.session_state.schritt == 'feedback':
         if st.button('Weiter ohne Überarbeitung', use_container_width=True):
             gehe_zu('muster')
     else:
-        if st.button('Musterantwort ansehen', type='primary', use_container_width=True):
+        if st.button('💡 Musterantwort ansehen', type='primary', use_container_width=True):
             gehe_zu('muster')
-        if st.button('Nächste Übung', use_container_width=True):
+        if st.button('▶️ Nächste Übung', use_container_width=True):
             neue_uebung(technik_behalten=True)
-        if st.button('Fertig – zur Lernbilanz', use_container_width=True):
+        if st.button('🏁 Fertig – zur Lernbilanz', use_container_width=True):
             neue_uebung(technik_behalten=True, ziel='abschluss')
 
 
@@ -581,7 +676,7 @@ elif st.session_state.schritt == 'feedback':
 # ---------------------------------------------------------------------------
 
 elif st.session_state.schritt == 'muster':
-    kopf('Eine mögliche Musterantwort')
+    kopf('💡 Eine mögliche Musterantwort')
     if st.session_state.muster is None:
         with st.spinner('Ich schreibe eine Musterantwort …'):
             m = rufe_ki(trainer.musterantwort,
@@ -597,18 +692,18 @@ elif st.session_state.schritt == 'muster':
             st.stop()
 
     m = st.session_state.muster
-    karte('Deine Fassung',
+    karte('✍️ Deine Fassung',
           st.session_state.ueberarbeitung or st.session_state.erwiderung)
-    karte('Musterantwort', m['musterantwort'])
-    st.write(m['warum'])
-    st.write(m['im_vergleich'])
+    karte('💡 Musterantwort', m['musterantwort'])
+    satz(m['warum'])
+    satz(m['im_vergleich'])
     st.caption('Das ist eine mögliche gute Lösung, nicht die einzig richtige. '
                f'Grundlage: {m["quelle"]}')
 
     st.markdown('---')
-    if st.button('Gleiche Technik noch einmal üben', type='primary', use_container_width=True):
+    if st.button('▶️ Gleiche Technik noch einmal üben', type='primary', use_container_width=True):
         neue_uebung(technik_behalten=True)
-    if st.button('Technik wechseln', use_container_width=True):
+    if st.button('🛠️ Technik wechseln', use_container_width=True):
         neue_uebung(technik_behalten=False)
     if st.button('Fertig – zur Lernbilanz', use_container_width=True):
         neue_uebung(technik_behalten=True, ziel='abschluss')
@@ -619,7 +714,7 @@ elif st.session_state.schritt == 'muster':
 # ---------------------------------------------------------------------------
 
 elif st.session_state.schritt == 'abschluss':
-    kopf('Deine Lernbilanz')
+    kopf('🎓 Deine Lernbilanz')
     durchgaenge = st.session_state.durchgaenge
     if not durchgaenge:
         st.write('Du hast noch keine Erwiderung fertig geübt.')
@@ -655,12 +750,12 @@ elif st.session_state.schritt == 'abschluss':
             st.rerun()
     else:
         b = st.session_state.bilanz
-        karte('Das kannst du schon', b['staerke'])
-        karte('Daran denkst du in der Diskussion', b['naechster_schritt'])
-        karte('Merksatz', b['merksatz'])
+        karte('⭐ Das kannst du schon', b['staerke'])
+        karte('👉 Daran denkst du in der Diskussion', b['naechster_schritt'])
+        karte('🧠 Merksatz', b['merksatz'])
 
     st.markdown('---')
-    st.markdown('#### Für deine Rollenkarte')
+    st.markdown('#### 📋 Für deine Rollenkarte')
     st.write('Tippe oben rechts im Kasten auf das Kopiersymbol, oder mache ein '
              'Bildschirmfoto.')
 
