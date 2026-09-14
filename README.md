@@ -4,6 +4,8 @@
 
 Einsatz: Selbstlernen zwischen B03 Teil 2 und der Fishbowl-Diskussion in B04, etwa 30 Minuten, auf Schul-iPads.
 
+Ablauf: **Rolle → Argument → Technik → Erwiderung → Ampeln → Überarbeiten → Musterantwort → Lernbilanz.**
+
 **Es wird nichts gespeichert.** Keine Namen, keine Serverablage, keine Lehrerübersicht. Die Schülertexte gehen an die OpenAI-API und werden danach verworfen.
 
 ---
@@ -63,6 +65,22 @@ TAGESGRENZE  = 400   # KI-Antworten pro Tag für die gesamte App
 
 ---
 
+## Warum erst das Argument, dann die Technik
+
+Bis zum 14.09.2026 lief es umgekehrt: erst Technik wählen, dann ein Argument dazu suchen. Das ist eine Entscheidung im luftleeren Raum — wer noch nicht weiß, worauf er antwortet, kann nicht beurteilen, welche Technik greift, und rät.
+
+Die jetzige Reihenfolge folgt der Anleitung im Materialpool selbst („1. Nehmt das Argument der Gegenseite. 2. Wählt eine Technik. 3. Formuliert eure Erwiderung") und der Fishbowl: Dort kommt das Argument zuerst, die Technikwahl ist die Reaktion darauf. Damit wird die Wahl der Technik zu einem eigenen Denkschritt am konkreten Fall — die anspruchsvollere und die für B04 relevantere Frage.
+
+**Der Preis und der Ausgleich.** Wer frei wählt, nimmt die Technik, die sich gerade am leichtesten anfühlt; einzelne Techniken kämen sonst nie dran. Deshalb:
+
+- Schritt 3 setzt ein ✓ hinter jede Technik, die in dieser Sitzung schon geübt wurde.
+- Ab dem dritten Durchgang nennt die App die noch offenen Techniken als Hinweis — als Angebot, nicht als Zwang.
+- Nach der Musterantwort steht **„Gleiches Argument, andere Technik"** als eigener Knopf. Das ist der lehrreiche Fall: Man sieht an einem Argument, dass mehrere Techniken funktionieren.
+
+**Auf der KI-Seite** ist die Technikwahl jetzt die Entscheidung des Schülers, nicht eine Vorgabe. Regel 10 in `trainer.py` setzt `technik_passt` deshalb nur noch auf `false`, wenn die gewählte Technik an diesem Argument wirklich keinen Angriffspunkt hat — nicht schon, wenn eine andere naheliegender wäre. War die Wahl klug, darf die Rückmeldung das im Lob anerkennen (Regel 10a).
+
+---
+
 ## Zwei Hilfen für schwächere Schüler
 
 **Gestufte Hilfe vor dem Schreiben.** Wer nicht weiterkommt, klickt auf „Ich brauche einen Tipp" und bekommt einen Denkanstoß — wo die Technik an diesem Argument greift, als Frage formuliert, ohne fertigen Satz. Erst ein zweiter Klick („Ich komme immer noch nicht weiter") liefert eine ausformulierte Erwiderung, verbunden mit der Aufforderung, dasselbe in eigenen Worten zu schreiben. Dieselbe Logik wie die Hilfekarten in B03 Teil 1: Differenzierung auf Abruf, nicht auf Vorrat.
@@ -97,7 +115,7 @@ Zwei Regeln für die Erklärungen: ein bis zwei kurze Sätze, und **kein Fachwor
 
 ## Verweise in den Materialpool
 
-An zwei Stellen kann der Schüler direkt im veröffentlichten Materialpool nachschlagen: im Schreibschritt unter dem Eingabefeld und noch einmal unter der Rückmeldung. Der Bereich heißt „Im Materialpool nachschlagen" und ist zugeklappt, damit er nicht ablenkt.
+An vier Stellen kann der Schüler direkt im veröffentlichten Materialpool nachschlagen: bei der Argumentwahl, bei der Technikwahl, im Schreibschritt unter dem Eingabefeld und noch einmal unter der Rückmeldung. Der Bereich heißt „Im Materialpool nachschlagen" und ist zugeklappt, damit er nicht ablenkt.
 
 Darin stehen, sofern das Ausgangsargument aus dem Pool stammt:
 

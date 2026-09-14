@@ -1,8 +1,14 @@
 """Diskussionstrainer - vier Techniken zum Kontern.
 
 Selbstlernangebot zwischen B03 Teil 2 und der Fishbowl in B04.
-Ablauf: Rolle -> Technik -> Ausgangsargument -> Erwiderung -> Ampel-Feedback
+Ablauf: Rolle -> Ausgangsargument -> Technik -> Erwiderung -> Ampel-Feedback
 -> Ueberarbeiten -> Musterantwort -> naechste Uebung oder Abschluss.
+
+Reihenfolge Argument VOR Technik (Stand 14.09.2026): So sequenziert es auch die
+Anleitung im Materialpool ("1. Nehmt das Argument der Gegenseite. 2. Waehlt eine
+Technik."). Die Technikwahl wird damit zum eigenen Denkschritt am konkreten Fall
+statt zu einer Entscheidung im luftleeren Raum. Ausgleich fuer das schwaechere
+gezielte Ueben: Schritt 3 zeigt, welche Techniken schon geuebt sind.
 
 Es wird nichts gespeichert. Kein Serverspeicher, keine Lehreruebersicht.
 """
@@ -279,19 +285,25 @@ def sichere_durchgang():
         st.session_state.geuebt.append(st.session_state.technik)
 
 
-def neue_uebung(technik_behalten: bool, ziel: str = ''):
-    """Durchgang sichern, Felder leeren und weitergehen."""
+def neue_uebung(argument_behalten: bool, ziel: str = ''):
+    """Durchgang sichern, Felder leeren und weitergehen.
+
+    argument_behalten=True heisst: dasselbe Ausgangsargument, aber neue
+    Technikwahl. Das ist der lehrreiche Fall - man sieht, dass mehrere
+    Techniken auf dasselbe Argument passen.
+    """
     sichere_durchgang()
-    for k in ('ausgangsargument', 'herkunft', 'erwiderung', 'ueberarbeitung',
-              'erwiderung_feld'):
+    for k in ('erwiderung', 'ueberarbeitung', 'erwiderung_feld'):
         st.session_state[k] = ''
     st.session_state.pop('ueberarbeitung_feld', None)
     for k in ('fb', 'fb2', 'muster', 'hilfe'):
         st.session_state[k] = None
     st.session_state.hilfestufe = 0
-    if not technik_behalten:
-        st.session_state.technik = ''
-    gehe_zu(ziel or ('argument' if technik_behalten else 'technik'))
+    st.session_state.technik = ''
+    if not argument_behalten:
+        st.session_state.ausgangsargument = ''
+        st.session_state.herkunft = ''
+    gehe_zu(ziel or ('technik' if argument_behalten else 'argument'))
 
 
 def ki_client():
@@ -331,7 +343,7 @@ def rufe_ki(funktion, *args):
 # Kopfbereich
 # ---------------------------------------------------------------------------
 
-SCHRITTE = {'rolle': 1, 'technik': 2, 'argument': 3, 'erwiderung': 4,
+SCHRITTE = {'rolle': 1, 'argument': 2, 'technik': 3, 'erwiderung': 4,
             'feedback': 5, 'muster': 6, 'abschluss': 7}
 
 
@@ -423,58 +435,22 @@ if st.session_state.schritt == 'rolle':
         beschriftung = 'Ich habe noch keine Rolle' if name == 'ohne Rolle' else name
         if st.button(beschriftung, key=f'rolle_{name}', use_container_width=True):
             st.session_state.rolle = name
-            gehe_zu('technik')
+            gehe_zu('argument')
     st.caption('Schreibe im Trainer keine Namen und keine persönlichen Angaben. '
                'Deine Texte werden nicht gespeichert.')
 
 
 # ---------------------------------------------------------------------------
-# Schritt 2 - Technik
-# ---------------------------------------------------------------------------
-
-elif st.session_state.schritt == 'technik':
-    kopf('🛠️ Welche Technik willst du üben?')
-    rollenhinweis()
-    for anzeige, schluessel in TECHNIK_LABEL.items():
-        if st.button(f"{TECHNIKEN[schluessel]['emoji']}  {anzeige}",
-                     key=f'tech_{schluessel}', use_container_width=True):
-            st.session_state.technik = schluessel
-            gehe_zu('argument')
-    with st.expander('🛠️ Was bedeuten die vier Techniken?'):
-        for anzeige, schluessel in TECHNIK_LABEL.items():
-            t = TECHNIKEN[schluessel]
-            st.markdown(f'{t["emoji"]} **{anzeige}** – {t["leitfrage"]}')
-            st.caption(t['erklaerung'])
-
-
-# ---------------------------------------------------------------------------
-# Schritt 3 - Ausgangsargument
+# Schritt 2 - Ausgangsargument
 # ---------------------------------------------------------------------------
 
 elif st.session_state.schritt == 'argument':
-    t = TECHNIKEN[st.session_state.technik]
-    kopf(f"{t['emoji']} {TECHNIK_ANZEIGE[st.session_state.technik]}")
-    karte('So geht das', t['erklaerung'])
-    karte('💡 Beispiel', t['beispiel'])
+    kopf('💬 Auf welches Argument willst du antworten?')
+    st.write('Such dir zuerst ein Argument der Gegenseite aus. '
+             'Welche Technik du darauf anwendest, entscheidest du gleich danach.')
+    rollenhinweis()
 
-    st.markdown('---')
-    st.markdown('#### Auf welches Argument willst du antworten?')
-
-    tab_selbst, tab_pool = st.tabs(['Selbst schreiben', 'Aus dem Materialpool'])
-
-    with tab_selbst:
-        st.write('Nenne ein Argument für oder gegen bundesweite Volksentscheide. '
-                 'Schreibe möglichst auch dazu, warum jemand das so sieht.')
-        eigenes = st.text_area('Argument', height=130, max_chars=600,
-                               label_visibility='collapsed',
-                               placeholder='Zum Beispiel: Volksentscheide bringen …')
-        if st.button('Weiter mit diesem Argument', type='primary', key='eig_weiter', use_container_width=True):
-            if eigenes.strip():
-                st.session_state.ausgangsargument = eigenes.strip()
-                st.session_state.herkunft = 'eigene Eingabe'
-                gehe_zu('erwiderung')
-            else:
-                st.error('Schreibe zuerst ein Argument.')
+    tab_pool, tab_selbst = st.tabs(['Aus dem Materialpool', 'Selbst schreiben'])
 
     with tab_pool:
         st.write('Wähle ein Argument aus dem Materialpool.')
@@ -492,11 +468,66 @@ elif st.session_state.schritt == 'argument':
         if st.button('Weiter mit diesem Argument', type='primary', key='pool_weiter', use_container_width=True):
             st.session_state.ausgangsargument = argument_text(gewaehlt)
             st.session_state.herkunft = gewaehlt
-            gehe_zu('erwiderung')
+            gehe_zu('technik')
+
+    with tab_selbst:
+        st.write('Nenne ein Argument für oder gegen bundesweite Volksentscheide. '
+                 'Schreibe möglichst auch dazu, warum jemand das so sieht.')
+        eigenes = st.text_area('Argument', height=130, max_chars=600,
+                               label_visibility='collapsed',
+                               placeholder='Zum Beispiel: Volksentscheide bringen …')
+        if st.button('Weiter mit diesem Argument', type='primary', key='eig_weiter', use_container_width=True):
+            if eigenes.strip():
+                st.session_state.ausgangsargument = eigenes.strip()
+                st.session_state.herkunft = 'eigene Eingabe'
+                gehe_zu('technik')
+            else:
+                st.error('Schreibe zuerst ein Argument.')
 
     st.markdown('---')
-    if st.button('Andere Technik wählen', use_container_width=True):
-        gehe_zu('technik')
+    materialpool_block()
+
+
+# ---------------------------------------------------------------------------
+# Schritt 3 - Technik
+# ---------------------------------------------------------------------------
+
+elif st.session_state.schritt == 'technik':
+    kopf('🛠️ Mit welcher Technik antwortest du darauf?')
+    karte('💬 Das Ausgangsargument', st.session_state.ausgangsargument)
+    st.write('Lies das Argument noch einmal. Welche der vier Techniken passt hier '
+             'am besten? Es gibt oft mehr als eine gute Antwort.')
+
+    geuebt = st.session_state.geuebt
+    for anzeige, schluessel in TECHNIK_LABEL.items():
+        t = TECHNIKEN[schluessel]
+        haken = '  ✓' if schluessel in geuebt else ''
+        if st.button(f"{t['emoji']}  {anzeige}{haken}",
+                     key=f'tech_{schluessel}', use_container_width=True):
+            st.session_state.technik = schluessel
+            gehe_zu('erwiderung')
+        st.caption(t['leitfrage'])
+
+    offen = [a for a, s in TECHNIK_LABEL.items() if s not in geuebt]
+    if geuebt:
+        st.caption('✓ = in dieser Sitzung schon geübt.')
+    if len(st.session_state.durchgaenge) >= 2 and offen:
+        st.info('Noch nicht geübt: ' + ', '.join(offen)
+                + '. Probier ruhig mal eine davon – in der Diskussion hilft es, '
+                  'mehr als eine Technik zu können.')
+
+    with st.expander('🛠️ Was bedeuten die vier Techniken?'):
+        for anzeige, schluessel in TECHNIK_LABEL.items():
+            t = TECHNIKEN[schluessel]
+            st.markdown(f'{t["emoji"]} **{anzeige}** – {t["leitfrage"]}')
+            st.caption(t['erklaerung'])
+            st.caption(f'Beispiel: {t["beispiel"]}')
+
+    materialpool_block(st.session_state.herkunft)
+
+    st.markdown('---')
+    if st.button('Anderes Argument wählen', use_container_width=True):
+        gehe_zu('argument')
 
 
 # ---------------------------------------------------------------------------
@@ -508,7 +539,7 @@ elif st.session_state.schritt == 'erwiderung':
     kopf('✍️ Schreibe deine Erwiderung')
     karte('💬 Das Ausgangsargument', st.session_state.ausgangsargument)
     karte(f"{t['emoji']} Deine Technik: " + TECHNIK_ANZEIGE[st.session_state.technik],
-          t['leitfrage'])
+          f"{t['leitfrage']}<br><span style=\"font-size:.95rem\">{t['erklaerung']}</span>")
 
     st.write('Antworte auf dieses Argument mit deiner Technik. '
              'Ein bis zwei Sätze reichen. Begründe, warum du das so siehst.')
@@ -576,7 +607,13 @@ elif st.session_state.schritt == 'erwiderung':
             else:
                 st.rerun()
 
+    if st.button('🛠️ Andere Technik wählen', use_container_width=True):
+        st.session_state.hilfe = None
+        st.session_state.hilfestufe = 0
+        gehe_zu('technik')
     if st.button('Anderes Argument wählen', use_container_width=True):
+        st.session_state.hilfe = None
+        st.session_state.hilfestufe = 0
         gehe_zu('argument')
 
 
@@ -666,9 +703,9 @@ elif st.session_state.schritt == 'feedback':
         if st.button('💡 Musterantwort ansehen', type='primary', use_container_width=True):
             gehe_zu('muster')
         if st.button('▶️ Nächste Übung', use_container_width=True):
-            neue_uebung(technik_behalten=True)
+            neue_uebung(argument_behalten=False)
         if st.button('🏁 Fertig – zur Lernbilanz', use_container_width=True):
-            neue_uebung(technik_behalten=True, ziel='abschluss')
+            neue_uebung(argument_behalten=False, ziel='abschluss')
 
 
 # ---------------------------------------------------------------------------
@@ -701,12 +738,12 @@ elif st.session_state.schritt == 'muster':
                f'Grundlage: {m["quelle"]}')
 
     st.markdown('---')
-    if st.button('▶️ Gleiche Technik noch einmal üben', type='primary', use_container_width=True):
-        neue_uebung(technik_behalten=True)
-    if st.button('🛠️ Technik wechseln', use_container_width=True):
-        neue_uebung(technik_behalten=False)
+    if st.button('▶️ Neues Argument, neue Übung', type='primary', use_container_width=True):
+        neue_uebung(argument_behalten=False)
+    if st.button('🛠️ Gleiches Argument, andere Technik', use_container_width=True):
+        neue_uebung(argument_behalten=True)
     if st.button('Fertig – zur Lernbilanz', use_container_width=True):
-        neue_uebung(technik_behalten=True, ziel='abschluss')
+        neue_uebung(argument_behalten=False, ziel='abschluss')
 
 
 # ---------------------------------------------------------------------------
@@ -719,7 +756,7 @@ elif st.session_state.schritt == 'abschluss':
     if not durchgaenge:
         st.write('Du hast noch keine Erwiderung fertig geübt.')
         if st.button('Zurück zur Übung', type='primary', use_container_width=True):
-            gehe_zu('technik')
+            gehe_zu('argument')
         st.stop()
 
     st.write('Welche Erwiderung war deine beste? Die nimmst du mit in die Diskussion.')
@@ -776,4 +813,4 @@ elif st.session_state.schritt == 'abschluss':
     st.markdown('---')
     if st.button('Noch eine Übung machen', use_container_width=True):
         st.session_state.bilanz = None
-        gehe_zu('technik')
+        gehe_zu('argument')

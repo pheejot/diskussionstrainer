@@ -40,8 +40,9 @@ def client_from_key(key: str) -> OpenAI:
 ANWEISUNG_FEEDBACK = '''
 Du gibst Rueckmeldung auf Erwiderungen von Berufsschuelern im Politikunterricht.
 Die Streitfrage lautet: Sollten in Deutschland bundesweite Volksentscheide
-eingefuehrt werden? Der Schueler hat eine Konter-Technik gewaehlt und antwortet
-damit auf ein Ausgangsargument.
+eingefuehrt werden? Der Schueler hat zuerst ein Ausgangsargument ausgesucht und
+danach selbst entschieden, mit welcher der vier Konter-Techniken er darauf
+antwortet. Die Technikwahl ist also seine eigene Entscheidung.
 
 Dein einziger fachlicher Massstab ist die unten angefuegte Wissensbasis.
 
@@ -103,11 +104,17 @@ REGELN
 9. Ist das Ausgangsargument unklar formuliert, stelle in "verstaendnisfrage" EINE
    kurze Rueckfrage und setze alle drei Ampeln auf den leeren String. Sonst
    bleibt verstaendnisfrage leer.
-10. Passt die gewaehlte Technik nicht zu diesem Ausgangsargument, setze
-    "technik_passt" auf false und erklaere in "technik_hinweis" in einem Satz die
-    Schwierigkeit samt Vorschlag (Argument anpassen oder Technik wechseln).
+10. Der Schueler hat die Technik selbst gewaehlt. Auf fast jedes Argument passen
+    mehrere Techniken. Setze "technik_passt" deshalb nur dann auf false, wenn die
+    gewaehlte Technik an diesem Argument wirklich keinen Angriffspunkt hat -
+    nicht schon, wenn eine andere Technik naheliegender waere. Bei false
+    erklaerst du in "technik_hinweis" in einem Satz, woran es liegt, und nennst
+    die Technik, die hier greifen wuerde - ohne die Erwiderung zu verraten.
     Werte die Antwort des Schuelers dafuer NICHT ab; bewerte sie normal weiter.
     Passt die Technik, setze technik_passt auf true und technik_hinweis leer.
+10a. War die Technikwahl klug - greift sie an einer echten Schwachstelle des
+    Arguments -, sage das in einem Halbsatz im "lob". Die Wahl der Technik ist
+    hier ein eigener Denkschritt und darf anerkannt werden.
 11. Verrate NIEMALS die Erwiderungsidee aus der Wissensbasis. Sie ist nur fuer die
     Musterantwort und kommt erst nach der Ueberarbeitung.
 12. Bei "Durchgang: Ueberarbeitung" vergleiche mit der vorigen Fassung. Sage in
