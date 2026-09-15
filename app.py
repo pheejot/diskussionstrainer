@@ -11,6 +11,12 @@ statt zu einer Entscheidung im luftleeren Raum. Ausgleich fuer das schwaechere
 gezielte Ueben: Schritt 3 zeigt, welche Techniken schon geuebt sind.
 
 Es wird nichts gespeichert. Kein Serverspeicher, keine Lehreruebersicht.
+
+Erweiterung 15.09.2026 (vor der Pruefungsstunde B04): Schritt 2 stellt die
+Gegenseite der Rolle voreingestellt ein und zeigt, welche Gruppe ein Argument
+wahrscheinlich bringt; Schritte 2-5 haben einen Hintergrund-Bereich mit den
+geprueften Belegen; der Abschluss formuliert den Uebertrag auf die Rollenkarte
+("Wenn die CDU sagt ... antworte ich ..."). Keine Aenderung an trainer.py.
 """
 
 import os
@@ -23,6 +29,8 @@ from glossar import markiere
 from argumente import (ARGUMENTE, ARGUMENT_NACH_ID, KRITERIEN_PFAD, POOL_SEITEN,
                        ROLLEN, TECHNIKEN, TECHNIK_ANZEIGE, TECHNIK_LABEL,
                        argument_text, gegenstrang, vault_url)
+from argumente import (BELEGE, HINTERGRUND, fuer_rolle_sortiert, gegenseite,
+                       typische_rollen)
 
 LEITFRAGE = 'Sollten in Deutschland bundesweite Volksentscheide eingeführt werden?'
 SITZUNGSLIMIT = 16          # KI-Antworten pro Schuelersitzung (inkl. Hilfe)
@@ -161,6 +169,57 @@ def materialpool_block(arg_id: str = ''):
                    'wechsle einfach zurück, deine Antwort ist noch da.')
 
 
+def hintergrund_block(arg_id: str = ''):
+    """Hintergrund zu einem Pool-Argument (Erweiterung 15.09.).
+
+    Ohne KI: nur gepruefte Belege aus der Wissensbasis. Die Erwiderungsidee
+    bleibt verborgen - der Schueler soll den Konter selbst finden.
+    """
+    if arg_id not in HINTERGRUND:
+        return
+    belegsatz, faelle = HINTERGRUND[arg_id]
+    with st.expander('🔎 Hintergrund: Was steckt hinter diesem Argument?'):
+        karte('📌 Kurz gesagt', belegsatz)
+        for fall_id in faelle:
+            titel, text = BELEGE[fall_id]
+            karte(f'🗂️ {titel}', text)
+        st.caption('Alle Angaben stammen aus dem Materialpool. In der Diskussion '
+                   'kannst du so ein Beispiel nutzen – etwa: „In der Schweiz …“')
+
+
+# Rollen mit Artikel, fuer Saetze wie "Wenn die CDU sagt ..."
+ROLLE_IM_SATZ = {
+    'AfD': 'die AfD',
+    'Mehr Demokratie e. V.': 'Mehr Demokratie',
+    'CDU': 'die CDU',
+    'Sozialverband': 'der Sozialverband',
+}
+ROLLE_KURZ = {'Mehr Demokratie e. V.': 'Mehr Demokratie'}
+
+
+def arg_beschriftung(arg_id: str) -> str:
+    """Titel plus die Gaesterolle, von der das Argument zu erwarten ist."""
+    titel = ARGUMENT_NACH_ID[arg_id]['titel']
+    namen = [ROLLE_KURZ.get(r, r) for r in typische_rollen(arg_id)]
+    return f'{titel}  ({" / ".join(namen)})' if namen else titel
+
+
+def kuerze(text: str, n: int = 90) -> str:
+    return text if len(text) <= n else text[:n].rsplit(' ', 1)[0] + ' …'
+
+
+def rollenkarten_zeile(d: dict) -> tuple:
+    """(wer, was, technik, erwiderung) fuer den Uebertrag auf die Rollenkarte."""
+    herkunft = d.get('herkunft', '')
+    if herkunft in ARGUMENT_NACH_ID:
+        namen = [ROLLE_IM_SATZ[r] for r in typische_rollen(herkunft)]
+        wer = ' oder '.join(namen) if namen else 'die Gegenseite'
+        was = ARGUMENT_NACH_ID[herkunft]['titel']
+    else:
+        wer, was = 'die Gegenseite', kuerze(d['argument'])
+    return wer, was, TECHNIK_ANZEIGE[d['technik']], d['erwiderung']
+
+
 def ampel(name: str, wert: str):
     if not wert:
         return
@@ -278,6 +337,7 @@ def sichere_durchgang():
     st.session_state.durchgaenge.append({
         'technik': st.session_state.technik,
         'argument': st.session_state.ausgangsargument,
+        'herkunft': st.session_state.herkunft,
         'erwiderung': beste,
         'kriterium': letztes_fb.get('genanntes_kriterium', ''),
     })
@@ -454,17 +514,26 @@ elif st.session_state.schritt == 'argument':
 
     with tab_pool:
         st.write('Wähle ein Argument aus dem Materialpool.')
+        gs = gegenseite(st.session_state.rolle)
+        if gs:
+            st.caption('Voreingestellt ist die Gegenseite deiner Rolle. '
+                       'Diese Argumente hörst du in der Diskussion.')
         seite = st.radio('Seite', ['pro', 'kontra'], horizontal=True,
+                         index=1 if gs == 'kontra' else 0,
                          format_func=lambda s: '➕ Pro Volksentscheide'
                          if s == 'pro' else '➖ Kontra Volksentscheide')
-        auswahl = [a for a in ARGUMENTE if a['seite'] == seite]
+        auswahl = fuer_rolle_sortiert(
+            [a for a in ARGUMENTE if a['seite'] == seite])
+        st.caption('In Klammern steht, welche Gruppe das Argument wahrscheinlich '
+                   'bringt – es passt zu ihren Leitkriterien.')
         gewaehlt = st.radio(
             'Argument',
             [a['id'] for a in auswahl],
-            format_func=lambda i: ARGUMENT_NACH_ID[i]['titel'],
+            format_func=arg_beschriftung,
             label_visibility='collapsed',
         )
         karte('💬 Das Argument', argument_text(gewaehlt))
+        hintergrund_block(gewaehlt)
         if st.button('Weiter mit diesem Argument', type='primary', key='pool_weiter', use_container_width=True):
             st.session_state.ausgangsargument = argument_text(gewaehlt)
             st.session_state.herkunft = gewaehlt
@@ -523,6 +592,7 @@ elif st.session_state.schritt == 'technik':
             st.caption(t['erklaerung'])
             st.caption(f'Beispiel: {t["beispiel"]}')
 
+    hintergrund_block(st.session_state.herkunft)
     materialpool_block(st.session_state.herkunft)
 
     st.markdown('---')
@@ -586,6 +656,7 @@ elif st.session_state.schritt == 'erwiderung':
         st.caption('Du musst nicht alle vier verwenden. Die Begründung ist das '
                    'Wichtigste.')
 
+    hintergrund_block(st.session_state.herkunft)
     materialpool_block(st.session_state.herkunft)
 
     if st.button('🚦 Rückmeldung holen', type='primary', use_container_width=True):
@@ -666,6 +737,7 @@ elif st.session_state.schritt == 'feedback':
     if krit and krit in KRITERIEN_PFAD:
         poollink(f'Mehr zum Kriterium {krit}', KRITERIEN_PFAD[krit])
 
+    hintergrund_block(st.session_state.herkunft)
     materialpool_block(st.session_state.herkunft)
 
     st.markdown('---')
@@ -793,22 +865,39 @@ elif st.session_state.schritt == 'abschluss':
 
     st.markdown('---')
     st.markdown('#### 📋 Für deine Rollenkarte')
-    st.write('Tippe oben rechts im Kasten auf das Kopiersymbol, oder mache ein '
-             'Bildschirmfoto.')
+    st.write('Schreib das in Stichworten auf deine Rollenkarte. Kürze deine '
+             'Antwort auf das Wichtigste – in der Diskussion sprichst du frei.')
+
+    wer, was, technik, erw = rollenkarten_zeile(beste)
+    karte(f'Wenn {wer} sagt …',
+          f'„{was}“<br><b>… antworte ich ({technik}):</b> {erw}')
+
+    andere = [d for i, d in enumerate(durchgaenge) if i != index]
+    if andere:
+        with st.expander(f'Deine anderen Übungen ({len(andere)}) – auch für die Rollenkarte'):
+            for d in andere:
+                w, wa, te, er = rollenkarten_zeile(d)
+                karte(f'Wenn {w} sagt …',
+                      f'„{wa}“<br><b>… antworte ich ({te}):</b> {er}')
+
+    st.write('Zum Kopieren: Tippe oben rechts im Kasten auf das Kopiersymbol, '
+             'oder mache ein Bildschirmfoto.')
 
     zeilen = [
         'DISKUSSIONSTRAINER – MEIN ERGEBNIS',
         '',
-        f'Argument der Gegenseite: {beste["argument"]}',
-        f'Meine Technik: {TECHNIK_ANZEIGE[beste["technik"]]}',
-        f'Meine Erwiderung: {beste["erwiderung"]}',
+        f'Wenn {wer} sagt: {was}',
+        f'… antworte ich ({technik}): {erw}',
     ]
     if beste['kriterium']:
         zeilen.append(f'Kriterium: {beste["kriterium"]}')
+    for d in andere:
+        w, wa, te, er = rollenkarten_zeile(d)
+        zeilen += ['', f'Wenn {w} sagt: {wa}', f'… antworte ich ({te}): {er}']
     if st.session_state.bilanz:
         zeilen += ['', f'Merksatz: {st.session_state.bilanz["merksatz"]}',
                    f'Nächster Schritt: {st.session_state.bilanz["naechster_schritt"]}']
-    st.code('\n'.join(zeilen), language=None)
+    st.code('\n'.join(zeilen), language=None, wrap_lines=True)
 
     st.markdown('---')
     if st.button('Noch eine Übung machen', use_container_width=True):

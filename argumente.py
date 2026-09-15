@@ -232,3 +232,205 @@ def gegenstrang(arg_id: str):
     if gegen in ARGUMENT_NACH_ID:
         return ARGUMENT_NACH_ID[gegen]['titel'], ARGUMENT_NACH_ID[gegen]['pfad']
     return 'Schutzregeln für faire Abstimmungen', gegen
+
+
+# ---------------------------------------------------------------------------
+# Erweiterung 15.09.2026 - Gegenseite, Hintergrund, Uebertrag auf die Rollenkarte
+# Anlass: In der Rollenvorbereitung fehlte Hintergrundwissen, um flexibel zu
+# reagieren. Alle Inhalte stammen aus wissensbasis.md (Abschnitte 5 und 7).
+# Die Erwiderungsideen werden hier bewusst NICHT uebernommen.
+# ---------------------------------------------------------------------------
+
+# Position der Gaesterollen
+ROLLEN_SEITE = {
+    'AfD': 'pro',
+    'Mehr Demokratie e. V.': 'pro',
+    'CDU': 'kontra',
+    'Sozialverband': 'kontra',
+}
+
+# Kriterien je Argument (Wissensbasis Abschnitt 5)
+KRITERIEN_ARG = {
+    'P1': ['Partizipation'],
+    'P2': ['Partizipation', 'Responsivität'],
+    'P3': ['Öffentlichkeit'],
+    'P4': ['Transparenz'],
+    'P5': ['Entscheidungsqualität', 'Problemlösungsfähigkeit'],
+    'P6': ['Responsivität'],
+    'P7': ['Responsivität'],
+    'P8': ['Responsivität', 'Entscheidungsqualität'],
+    'P9': ['Politischer Wettbewerb'],
+    'P10': ['Politische Gleichheit', 'Responsivität'],
+    'K1': ['Regierungsfähigkeit'],
+    'K2': ['Entscheidungsqualität', 'Öffentlichkeit'],
+    'K3': ['Politische Gleichheit', 'Öffentlichkeit', 'Politischer Wettbewerb'],
+    'K4': ['Entscheidungsqualität'],
+    'K5': ['Politische Gleichheit', 'Gemeinwohlorientierung'],
+    'K6': ['Umsetzbarkeit', 'Problemlösungsfähigkeit'],
+    'K7': ['Responsivität', 'Entscheidungsqualität'],
+    'K8': ['Politische Gleichheit'],
+    'K9': ['Entscheidungsqualität', 'Politische Gleichheit'],
+}
+
+
+def gegenseite(rolle: str):
+    """'pro' oder 'kontra' - die Seite, die der Rolle widerspricht. Sonst None."""
+    seite = ROLLEN_SEITE.get(rolle)
+    if seite is None:
+        return None
+    return 'kontra' if seite == 'pro' else 'pro'
+
+
+def typische_rollen(arg_id: str) -> list:
+    """Gaesterollen derselben Seite, deren Leitkriterien das Argument trifft.
+
+    Beispiel: K1 (Regierungsfaehigkeit) -> ['CDU']. Damit sieht ein AfD-Gast,
+    von wem er dieses Argument in der Fishbowl erwarten muss.
+    """
+    a = ARGUMENT_NACH_ID.get(arg_id)
+    if not a:
+        return []
+    krit = KRITERIEN_ARG.get(arg_id, [])
+    return [r for r, s in ROLLEN_SEITE.items()
+            if s == a['seite'] and any(k in krit for k in ROLLEN[r])]
+
+
+def fuer_rolle_sortiert(auswahl: list) -> list:
+    """Argumente mit typischer Gaesterolle zuerst, sonst Reihenfolge wie im Pool."""
+    return sorted(auswahl, key=lambda a: 0 if typische_rollen(a['id']) else 1)
+
+
+# Belege (Wissensbasis Abschnitt 7) - Fall und Kernangabe wortgleich
+BELEGE = {
+    'B-CH-Alltag': ('Abstimmen gehört in der Schweiz zum Alltag',
+                    'Stimmberechtigte erhalten Stimmzettel und offizielle '
+                    'Erläuterungen, verschickt spätestens drei Wochen vor dem '
+                    'Termin. Viele Vorlagen können aber auch überfordern.'),
+    'CH-Instrumente': ('Drei Schweizer Instrumente',
+                       'Volksinitiative: 100.000 Unterschriften in 18 Monaten, '
+                       'Änderung der Bundesverfassung (Anstoß). Fakultatives '
+                       'Referendum: 50.000 Unterschriften in 100 Tagen oder acht '
+                       'Kantone, stoppt ein Gesetz (Bremse). Obligatorisches '
+                       'Referendum: automatisch, z. B. bei Verfassungsänderungen '
+                       '(Pflicht).'),
+    'B-Brexit': ('Brexit 2016',
+                 '51,9 Prozent für „Leave“. Die Abstimmung entschied die '
+                 'Richtung, nicht die Form. Danach mussten Handel, Grenzen, '
+                 'Bürgerrechte und Fristen geklärt werden. Ein Weg zur '
+                 'Selbstkorrektur fehlte.'),
+    'B-Prop22': ('Kalifornien, Proposition 22 (2020)',
+                 'Uber, Lyft und weitere Firmen gaben rund 200 Millionen '
+                 'US-Dollar aus; die von ihnen unterstützte Seite gewann. Nicht '
+                 'direkt auf Deutschland übertragbar.'),
+    'B-Minarett': ('Schweiz, Minarettverbot 2009',
+                   '57,5 Prozent für ein Verbot neuer Minarette. Das betraf '
+                   'besonders die muslimische Minderheit.'),
+    'B-Irland': ('Irland, Ehe für alle 2015',
+                 'Rund 62 Prozent Ja am 22. Mai 2015. Irland war das erste Land, '
+                 'das die Ehe für alle per Volksabstimmung einführte – eine '
+                 'Mehrheit kann Minderheitenrechte auch ausweiten.'),
+    'B-Kalifornien': ('Kalifornien, Proposition 8 (2008)',
+                      'Rund 52 Prozent Ja für ein Verbot der gleichgeschlechtlichen '
+                      'Ehe. Gerichte erklärten das Verbot später für ungültig, ab '
+                      '2013 waren solche Ehen wieder möglich.'),
+    'B-DW': ('Berlin, „Deutsche Wohnen & Co enteignen“ 2021',
+             '57,6 Prozent dafür. Danach prüfte eine Expertenkommission '
+             'Rechtsfragen, Entschädigung, Kosten und Modelle.'),
+    'B-Berlin-Klima': ('Berlin, Klima-Volksentscheid 2023',
+                       '50,9 Prozent der Teilnehmenden stimmten mit Ja, aber nur '
+                       '18,2 Prozent aller Stimmberechtigten – nötig waren 25 '
+                       'Prozent. Die Vorlage wurde nicht angenommen.'),
+    'B-Hamburg': ('Hamburger Zukunftsentscheid 2025',
+                  '12. Oktober 2025, Beteiligung 43,6 Prozent, 53 Prozent Ja, '
+                  'Quorum erreicht, das Gesetz gilt: Klimaneutralität bis 2040 '
+                  'statt 2045, jährliche CO2-Budgets, Sozialklausel.'),
+    'B-Bienen': ('Bayern, „Rettet die Bienen“ 2019',
+                 'Über 1,7 Millionen Unterschriften, über 18 Prozent der '
+                 'Stimmberechtigten – das erfolgreichste Volksbegehren in Bayern. '
+                 'Der Landtag übernahm die Forderung, ein Volksentscheid fand gar '
+                 'nicht statt.'),
+    'B-S21': ('Stuttgart 21, Volksabstimmung 2011',
+              '58,9 Prozent Nein (also: weiterbauen), 41,1 Prozent Ja, '
+              'Beteiligung 48,3 Prozent. Das Ergebnis wurde breit anerkannt und '
+              'beendete einen langen Konflikt.'),
+    'B-CH-Masseneinwanderung': ('Schweiz 2014',
+                                'Rund 50,3 Prozent Ja für feste Höchstzahlen bei '
+                                'der Einwanderung. Das widersprach dem Vertrag mit '
+                                'der EU; das Parlament setzte nur abgeschwächt um.'),
+    'B-Studie-2023': ('Studie zu 43 Schweizer Abstimmungen (2023)',
+                      'Wer abstimmt, hängt vor allem davon ab, ob man früher '
+                      'regelmäßig teilgenommen hat – dazu Interesse, Bildung und '
+                      'soziale Klasse.'),
+    'B-Studie-2026': ('Studie zur Schweiz (2026)',
+                      'Volksinitiativen bringen Themen mittlerer Einkommens- und '
+                      'Bildungsgruppen stärker auf die Tagesordnung als das '
+                      'Parlament. Bei den Ergebnissen bleibt ein Vorteil für '
+                      'Menschen mit höherem Einkommen und mehr Bildung.'),
+    'B-Uebersicht-2024': ('Übersicht über 67 Studien (2024)',
+                          'Im Durchschnitt nur kleine positive Wirkungen auf '
+                          'Beteiligung, Wissen, Zufriedenheit und Vertrauen – mit '
+                          'großen Unterschieden nach Land, Verfahren und Thema.'),
+}
+
+# Hintergrund je Argument: Belegsatz (Abschnitt 5, ohne Verweise) + Fall-IDs.
+# Nur die Belege des Arguments SELBST - keine Faelle, die schon den Konter
+# liefern (z. B. Irland/Kalifornien bei K5). Sonst nimmt der Hintergrund den
+# Denkschritt vorweg.
+HINTERGRUND = {
+    'P1': ('In der Schweiz gibt es auf Bundesebene regelmäßig Volksabstimmungen.',
+           ['B-CH-Alltag', 'CH-Instrumente']),
+    'P2': ('Studien zeigen positive Wirkungen, eine große Übersicht von 2024 findet '
+           'aber nur kleine durchschnittliche Effekte.',
+           ['B-Uebersicht-2024', 'B-S21']),
+    'P3': ('In der Schweiz erhalten Stimmberechtigte offizielle Erläuterungen mit '
+           'Positionen und Argumenten.',
+           ['B-CH-Alltag']),
+    'P4': ('In der Schweiz werden Abstimmungsunterlagen vorab verschickt, größere '
+           'Kampagnen müssen ihre Finanzierung offenlegen.',
+           ['B-CH-Alltag']),
+    'P5': ('In der Schweiz haben Bürger frühere Ergebnisse später angepasst; beim '
+           'Brexit fehlte dieser Weg.',
+           ['B-Brexit']),
+    'P6': ('Eine Schweizer Studie von 2026 zeigt: Initiativen setzen Themen teilweise '
+           'gleichberechtigter auf die Tagesordnung als Parlamente.',
+           ['B-Studie-2026', 'B-Bienen']),
+    'P7': ('In der Schweiz kann gegen ein Gesetz des Parlaments ein fakultatives '
+           'Referendum verlangt werden – mit festen Fristen und Unterschriftenzahlen.',
+           ['CH-Instrumente']),
+    'P8': ('Schon die Möglichkeit eines Referendums bringt das Parlament dazu, früher '
+           'Kompromisse zu suchen. In Bayern übernahm der Landtag 2019 die Forderung.',
+           ['CH-Instrumente', 'B-Bienen']),
+    'P9': ('In der Schweiz können Bürger mit einer Volksinitiative ein eigenes '
+           'Anliegen zur Abstimmung bringen – auch ohne große Partei dahinter.',
+           ['CH-Instrumente']),
+    'P10': ('Eine Studie von 2026 zeigt: Initiativen bringen Themen mittlerer Gruppen '
+            'stärker auf die Tagesordnung; bei den Ergebnissen bleiben Vorteile '
+            'höherer Einkommen.',
+            ['B-Studie-2026']),
+    'K1': ('Der Vergleich Deutschland–Schweiz zeigt: Direkte Demokratie verändert das '
+           'ganze politische System. Die Schweiz verbindet sie mit einer starken '
+           'Kompromisskultur – einzelne Instrumente lassen sich nicht einfach kopieren.',
+           ['CH-Instrumente']),
+    'K2': ('Theodor Heuss nannte die Volksgesetzgebung bei der Arbeit am Grundgesetz '
+           '1948/49 „eine Prämie für jeden Demagogen“.',
+           []),
+    'K3': ('Beim Volksentscheid „Proposition 22“ in Kalifornien gaben Uber, Lyft und '
+           'andere Firmen 2020 rund 200 Millionen Dollar aus.',
+           ['B-Prop22']),
+    'K4': ('Beim Brexit 2016 war offen, wie der EU-Austritt genau aussehen sollte.',
+           ['B-Brexit']),
+    'K5': ('In der Schweiz stimmte 2009 eine Mehrheit für ein Verbot neuer Minarette.',
+           ['B-Minarett']),
+    'K6': ('Beim Berliner Volksentscheid 2021 stimmten 57,6 Prozent dafür – danach '
+           'prüfte eine Expertenkommission erst, wie es umgesetzt werden kann.',
+           ['B-DW', 'B-CH-Masseneinwanderung', 'B-Hamburg', 'B-Berlin-Klima']),
+    'K7': ('Eine Übersicht über 67 Studien findet im Durchschnitt nur kleine positive '
+           'Wirkungen auf Wissen, Teilnahme und Vertrauen.',
+           ['B-Uebersicht-2024']),
+    'K8': ('Eine Studie zu 43 Schweizer Abstimmungen zeigt: Frühere Teilnahme, '
+           'Interesse, Bildung und soziale Klasse spielen eine Rolle.',
+           ['B-Studie-2023']),
+    'K9': ('In Schweizer Untersuchungen fühlten sich viele Stimmberechtigte nicht '
+           'ausreichend informiert. Viele Vorlagen können überfordern.',
+           ['B-CH-Alltag']),
+}
