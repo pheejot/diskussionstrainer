@@ -148,6 +148,13 @@ st.markdown(
       textarea[placeholder="Eigenes Argument eingeben"]::placeholder {
           color: #4C94D8 !important; opacity: 1 !important; font-weight: 600;
       }
+      .aufgabe {
+          background: #FBF3DC; border-left: 6px solid #B8860B;
+          border-radius: 8px; padding: .8rem 1rem; margin: .9rem 0 .4rem 0;
+          font-size: 1.15rem; font-weight: 700; line-height: 1.45;
+          color: #0F2C5C;
+      }
+      .aufgabe .zeiger { margin-right: .4rem; }
       .oder { color: #5A6B85; font-size: .95rem; margin: .9rem 0 .2rem 0; }
       .inhalt .bs { line-height: 1.9; }
       .bs { border-radius: 4px; padding: .05rem .15rem; }
@@ -186,6 +193,12 @@ def karte(label: str, inhalt: str, glossar: bool = True, klasse: str = '',
         f'<div class="inhalt">{text}</div></div>',
         unsafe_allow_html=True,
     )
+
+
+def aufgabe(text: str):
+    """Arbeitsauftrag als gelbes Aufgabenband (Wunsch 16.09.)."""
+    st.markdown(f'<div class="aufgabe"><span class="zeiger">👉</span>{text}</div>',
+                unsafe_allow_html=True)
 
 
 def satz(inhalt: str, praefix: str = ''):
@@ -805,11 +818,11 @@ elif st.session_state.schritt == 'auswahl':
           glossar=False, klasse='technik')
 
     if st.session_state.falsch:
-        st.write('Versuch es noch einmal. Lies die Leitfrage deiner Technik und '
-                 'prüfe die übrigen Antworten.')
+        aufgabe('Versuch es noch einmal. Lies die Leitfrage deiner Technik und '
+                'prüfe die übrigen Antworten.')
     else:
-        st.write('Alle vier Antworten sind brauchbar. Aber nur **eine** nutzt deine '
-                 'Technik. Welche?')
+        aufgabe('Alle vier Antworten sind brauchbar. Aber nur <u>eine</u> nutzt '
+                'deine Technik. Welche?')
 
     for n, tk in enumerate(st.session_state.reihenfolge):
         buchstabe = 'ABCD'[n]
