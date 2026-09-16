@@ -145,6 +145,10 @@ st.markdown(
       }
       .zwischenraum { height: .6rem; }
       .karte.weiss { background: #FFFFFF; }
+      textarea[placeholder="Eigenes Argument eingeben"]::placeholder {
+          color: #4C94D8 !important; opacity: 1 !important; font-weight: 600;
+      }
+      .oder { color: #5A6B85; font-size: .95rem; margin: .9rem 0 .2rem 0; }
       .inhalt .bs { line-height: 1.9; }
       .bs { border-radius: 4px; padding: .05rem .15rem; }
       .bs-behauptung { background: #EAF1F8; border-bottom: 2px solid #215E99; }
@@ -642,141 +646,128 @@ elif st.session_state.schritt == 'argument':
     rollenhinweis()
     gs = gegenseite(st.session_state.rolle)
 
-    quelle = st.radio('Woher kommt das Argument?',
-                      ['pool', 'selbst'], horizontal=True, key='quelle',
-                      format_func=lambda q: '📚 Aus dem Materialpool'
-                      if q == 'pool' else '✍️ Eigenes Argument',
-                      label_visibility='collapsed')
-
-    if quelle == 'pool':
-        if gs:
-            seite = gs
-            ueberschrift = ('➕ Pro-Argumente' if gs == 'pro'
-                            else '➖ Kontra-Argumente')
-            st.markdown(f'#### {ueberschrift}')
-            st.write('Das sagt die Gegenseite. Genau diese Argumente hörst du in '
-                     'der Diskussion.')
-        else:
-            seite = st.radio('Seite', ['pro', 'kontra'], horizontal=True,
-                             key='seite_umschalter',
-                             format_func=lambda s: '➕ Pro Volksentscheide'
-                             if s == 'pro' else '➖ Kontra Volksentscheide')
-        auswahl = fuer_rolle_sortiert(
-            [a for a in ARGUMENTE if a['seite'] == seite])
-        st.caption('In Klammern steht, welche Gruppe das Argument wahrscheinlich '
-                   'bringt.')
-        gewaehlt = st.radio(
-            'Argument',
-            [a['id'] for a in auswahl],
-            format_func=arg_beschriftung,
-            label_visibility='collapsed',
-            key=f'argument_{seite}',
-        )
-        karte('💬 Das Argument', argument_text(gewaehlt))
-        hintergrund_block(gewaehlt)
-        if st.button('Weiter mit diesem Argument', type='primary',
-                     key='pool_weiter', use_container_width=True):
-            starte_runde(gewaehlt, argument_text(gewaehlt), ERWIDERUNGEN[gewaehlt])
-
+    if gs:
+        seite = gs
+        ueberschrift = ('➕ Pro-Argumente' if gs == 'pro'
+                        else '➖ Kontra-Argumente')
+        st.markdown(f'#### {ueberschrift}')
+        st.write('Das sagt die Gegenseite. Genau diese Argumente hörst du in '
+                 'der Diskussion.')
     else:
-        eigene_seite = {'pro': 'kontra', 'kontra': 'pro'}.get(gs, '')
-        if eigene_seite:
-            richtung = 'für' if eigene_seite == 'pro' else 'gegen'
-            st.write(f'Schreibe ein eigenes Argument **{richtung}** bundesweite '
-                     'Volksentscheide – so, wie du es in der Diskussion sagen '
-                     'würdest. Die KI prüft es und bringt dann ein Gegenargument.')
+        seite = st.radio('Seite', ['pro', 'kontra'], horizontal=True,
+                         key='seite_umschalter',
+                         format_func=lambda s: '➕ Pro Volksentscheide'
+                         if s == 'pro' else '➖ Kontra Volksentscheide')
+    auswahl = fuer_rolle_sortiert(
+        [a for a in ARGUMENTE if a['seite'] == seite])
+    st.caption('In Klammern steht, welche Gruppe das Argument wahrscheinlich '
+               'bringt.')
+    gewaehlt = st.radio(
+        'Argument',
+        [a['id'] for a in auswahl],
+        format_func=arg_beschriftung,
+        label_visibility='collapsed',
+        key=f'argument_{seite}',
+    )
+
+    # Eigenes Argument - direkt unter der Liste (Wunsch 16.09.)
+    eigene_seite = {'pro': 'kontra', 'kontra': 'pro'}.get(gs, '')
+    st.markdown('<div class="oder">' + markiere(
+        'Oder schreib ein eigenes Argument – die KI prüft die vier Bausteine '
+        '(Behauptung, Begründung, Beleg, Kriterium) und antwortet mit einem '
+        'Gegenargument.') + '</div>', unsafe_allow_html=True)
+    eigenes = st.text_area('Eigenes Argument', height=110, max_chars=600,
+                           label_visibility='collapsed', key='eigenes_argument',
+                           placeholder='Eigenes Argument eingeben')
+    restanzeige()
+
+    if st.button('🔍 Argument prüfen', key='pruefen',
+                 use_container_width=True):
+        if len(eigenes.strip()) < 15:
+            st.error('Schreibe zuerst ein ganzes Argument – mit einem „weil".')
         else:
-            st.write('Schreibe ein eigenes Argument für oder gegen bundesweite '
-                     'Volksentscheide. Die KI prüft es und bringt dann ein '
-                     'Gegenargument.')
-        satz('Ein gutes Argument hat vier Bausteine: Behauptung, Begründung, '
-             'Beleg und Kriterium.')
-        eigenes = st.text_area('Dein Argument', height=140, max_chars=600,
-                               label_visibility='collapsed', key='eigenes_argument',
-                               placeholder='Zum Beispiel: Volksentscheide sind gut, '
-                               'weil …')
-        restanzeige()
+            with st.spinner('Ich prüfe dein Argument …'):
+                erg = rufe_ki(trainer.pruefe_argument, eigenes.strip(),
+                              st.session_state.rolle)
+            if erg is not None:
+                st.session_state.pruefung = erg
+                st.session_state.pruef_text = eigenes.strip()
+            st.rerun()
 
-        if st.button('🔍 Argument prüfen', type='primary', key='pruefen',
-                     use_container_width=True):
-            if len(eigenes.strip()) < 15:
-                st.error('Schreibe zuerst ein ganzes Argument – mit einem „weil".')
-            else:
-                with st.spinner('Ich prüfe dein Argument …'):
-                    erg = rufe_ki(trainer.pruefe_argument, eigenes.strip(),
-                                  st.session_state.rolle)
-                if erg is not None:
-                    st.session_state.pruefung = erg
-                    st.session_state.pruef_text = eigenes.strip()
-                st.rerun()
+    pr = st.session_state.pruefung
+    if pr:
+        if pr.get('verstaendnisfrage'):
+            karte('❓ Eine Frage an dich', pr['verstaendnisfrage'], roh=True)
+            st.write('Überarbeite dein Argument im Feld und lass es neu prüfen.')
+        else:
+            geaendert = eigenes.strip() != st.session_state.pruef_text
+            st.markdown('#### 🧱 So ist dein Argument gebaut')
+            if geaendert:
+                st.info('Du hast den Text geändert. Lass ihn neu prüfen – '
+                        'unten steht noch die geprüfte Fassung.')
+            st.markdown(
+                '<div class="karte weiss"><div class="label">Geprüfte Fassung</div>'
+                '<div class="inhalt">'
+                + markiere_bausteine(st.session_state.pruef_text,
+                                     pr.get('teile', []))
+                + '</div></div>', unsafe_allow_html=True)
+            vorhanden = pr.get('vorhanden', {})
+            st.markdown(bausteine_legende(vorhanden,
+                                          pr.get('genanntes_kriterium', '')),
+                        unsafe_allow_html=True)
+            if pr.get('lob'):
+                satz(html.escape(pr['lob']), praefix='👍 ')
+            if pr.get('tipp'):
+                karte('💡 Tipp', pr['tipp'], roh=True)
+            if pr.get('beleg_ungeprueft'):
+                st.caption('Deinen Beleg habe ich im Materialpool nicht '
+                           'gefunden. Prüfe, ob er stimmt – oder nimm ein '
+                           'Beispiel aus dem Materialpool.')
+            if (eigene_seite and pr.get('seite') in ('pro', 'kontra')
+                    and pr['seite'] != eigene_seite):
+                st.warning(
+                    f'Dein Argument spricht eher '
+                    f'{"für" if pr["seite"] == "pro" else "gegen"} '
+                    f'Volksentscheide. Deine Rolle ist aber '
+                    f'{"Pro" if eigene_seite == "pro" else "Kontra"}. '
+                    'Du kannst es überarbeiten oder trotzdem weitermachen.')
+            vollstaendig = all(vorhanden.get(b) for b in
+                               ('behauptung', 'begruendung', 'kriterium'))
+            if not vollstaendig:
+                st.write('Überarbeite dein Argument im Feld und prüfe neu – '
+                         'oder mach trotzdem weiter.')
+            if st.button('➡️ Weiter: Gegenargument holen',
+                         type='primary' if vollstaendig else 'secondary',
+                         key='gegen_holen', use_container_width=True):
+                argument = st.session_state.pruef_text
+                seite_arg = pr.get('seite')
+                if seite_arg not in ('pro', 'kontra'):
+                    seite_arg = eigene_seite
+                gegen_seite = {'pro': 'kontra', 'kontra': 'pro'}.get(seite_arg)
+                erlaubt = [x['id'] for x in ARGUMENTE
+                           if gegen_seite is None or x['seite'] == gegen_seite]
+                with st.spinner('Die Gegenseite antwortet …'):
+                    g = rufe_ki(trainer.gegenargument, argument,
+                                st.session_state.rolle, erlaubt)
+                if g is None:
+                    st.rerun()
+                elif g.get('pool_id'):
+                    pid = g['pool_id']
+                    starte_runde(pid, argument_text(pid), ERWIDERUNGEN[pid],
+                                 mein_argument=argument)
+                else:
+                    starte_runde(EIGENE_HERKUNFT, g['gegenargument'], g['erw'],
+                                 mein_argument=argument)
 
-        pr = st.session_state.pruefung
-        if pr:
-            if pr.get('verstaendnisfrage'):
-                karte('❓ Eine Frage an dich', pr['verstaendnisfrage'], roh=True)
-                st.write('Überarbeite dein Argument oben und lass es neu prüfen.')
-            else:
-                geaendert = eigenes.strip() != st.session_state.pruef_text
-                st.markdown('#### 🧱 So ist dein Argument gebaut')
-                if geaendert:
-                    st.info('Du hast den Text geändert. Lass ihn neu prüfen – '
-                            'unten steht noch die geprüfte Fassung.')
-                st.markdown(
-                    '<div class="karte weiss"><div class="label">Geprüfte Fassung</div>'
-                    '<div class="inhalt">'
-                    + markiere_bausteine(st.session_state.pruef_text,
-                                         pr.get('teile', []))
-                    + '</div></div>', unsafe_allow_html=True)
-                vorhanden = pr.get('vorhanden', {})
-                st.markdown(bausteine_legende(vorhanden,
-                                              pr.get('genanntes_kriterium', '')),
-                            unsafe_allow_html=True)
-                if pr.get('lob'):
-                    satz(html.escape(pr['lob']), praefix='👍 ')
-                if pr.get('tipp'):
-                    karte('💡 Tipp', pr['tipp'], roh=True)
-                if pr.get('beleg_ungeprueft'):
-                    st.caption('Deinen Beleg habe ich im Materialpool nicht '
-                               'gefunden. Prüfe, ob er stimmt – oder nimm ein '
-                               'Beispiel aus dem Materialpool.')
-                if (eigene_seite and pr.get('seite') in ('pro', 'kontra')
-                        and pr['seite'] != eigene_seite):
-                    st.warning(
-                        f'Dein Argument spricht eher '
-                        f'{"für" if pr["seite"] == "pro" else "gegen"} '
-                        f'Volksentscheide. Deine Rolle ist aber '
-                        f'{"Pro" if eigene_seite == "pro" else "Kontra"}. '
-                        'Du kannst es überarbeiten oder trotzdem weitermachen.')
-                vollstaendig = all(vorhanden.get(b) for b in
-                                   ('behauptung', 'begruendung', 'kriterium'))
-                if not vollstaendig:
-                    st.write('Überarbeite dein Argument oben und prüfe neu – '
-                             'oder mach trotzdem weiter.')
-                if st.button('➡️ Weiter: Gegenargument holen',
-                             type='primary' if vollstaendig else 'secondary',
-                             key='gegen_holen', use_container_width=True):
-                    argument = st.session_state.pruef_text
-                    seite_arg = pr.get('seite')
-                    if seite_arg not in ('pro', 'kontra'):
-                        seite_arg = eigene_seite
-                    gegen_seite = {'pro': 'kontra', 'kontra': 'pro'}.get(seite_arg)
-                    erlaubt = [x['id'] for x in ARGUMENTE
-                               if gegen_seite is None or x['seite'] == gegen_seite]
-                    with st.spinner('Die Gegenseite antwortet …'):
-                        g = rufe_ki(trainer.gegenargument, argument,
-                                    st.session_state.rolle, erlaubt)
-                    if g is None:
-                        st.rerun()
-                    elif g.get('pool_id'):
-                        pid = g['pool_id']
-                        starte_runde(pid, argument_text(pid), ERWIDERUNGEN[pid],
-                                     mein_argument=argument)
-                    else:
-                        starte_runde(EIGENE_HERKUNFT, g['gegenargument'], g['erw'],
-                                     mein_argument=argument)
+    st.caption('Prüfung und Gegenargument kommen von einer KI. Schreibe keine '
+               'Namen und keine persönlichen Angaben.')
 
-        st.caption('Prüfung und Gegenargument kommen von einer KI. Schreibe keine '
-                   'Namen und keine persönlichen Angaben.')
+    karte('💬 Das Argument', argument_text(gewaehlt))
+    hintergrund_block(gewaehlt)
+    if st.button('Weiter mit diesem Argument', type='primary',
+                 key='pool_weiter', use_container_width=True):
+        starte_runde(gewaehlt, argument_text(gewaehlt), ERWIDERUNGEN[gewaehlt])
+
 
     st.markdown('---')
     materialpool_block()
