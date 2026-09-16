@@ -34,6 +34,7 @@ import random
 from datetime import date, datetime
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import trainer
 from glossar import markiere
@@ -144,6 +145,10 @@ st.markdown(
           margin: -.2rem 0 .7rem 0;
       }
       .zwischenraum { height: .6rem; }
+      .element-container:has(iframe[height="0"]) {
+          position: absolute; height: 0; overflow: hidden; }
+      [data-testid="stElementContainer"]:has(iframe[height="0"]) {
+          position: absolute; height: 0; overflow: hidden; }
       .karte.weiss { background: #FFFFFF; }
       textarea[placeholder="Eigenes Argument eingeben"]::placeholder {
           color: #4C94D8 !important; opacity: 1 !important; font-weight: 600;
@@ -461,6 +466,7 @@ STARTWERTE = {
     'ki_aufrufe': 0,
     'durchgaenge': [],
     'fehler': '',
+    'nach_oben': 0,           # Zaehler fuer den Sprung an den Seitenanfang
 }
 
 for k, v in STARTWERTE.items():
@@ -470,7 +476,36 @@ for k, v in STARTWERTE.items():
 
 def gehe_zu(schritt: str):
     st.session_state.schritt = schritt
+    st.session_state.nach_oben += 1
     st.rerun()
+
+
+def nach_oben_springen():
+    """Nach jedem Seitenwechsel an den Seitenanfang (Wunsch 16.09.).
+
+    Streamlit behaelt die Scrollposition bei, wenn sich der Inhalt aendert.
+    Das Skript laeuft in einem unsichtbaren iframe und setzt die Scroll-
+    Container der App auf 0. Der Zaehler im Inhalt sorgt dafuer, dass das
+    iframe bei jedem Wechsel neu geladen wird.
+    """
+    if not st.session_state.nach_oben:
+        return
+    components.html(
+        f"""<script>
+        // Seitenwechsel {st.session_state.nach_oben}
+        const d = window.parent.document;
+        function hoch() {{
+          const ziele = d.querySelectorAll(
+            '[data-testid="stAppScrollToBottomContainer"], [data-testid="stMain"], '
+            + 'section.main, .main, [data-testid="stAppViewContainer"]');
+          ziele.forEach(z => {{ z.scrollTop = 0; }});
+          window.parent.scrollTo(0, 0);
+        }}
+        hoch();
+        [50, 150, 400, 800].forEach(t => setTimeout(hoch, t));
+        </script>""",
+        height=0,
+    )
 
 
 def starte_runde(herkunft: str, argument: str, erw: dict,
@@ -625,6 +660,7 @@ if erwarteter_code and not st.session_state.freigeschaltet:
 
 
 seitenleiste()
+nach_oben_springen()
 
 if st.session_state.fehler:
     st.warning(st.session_state.fehler)
