@@ -434,3 +434,519 @@ HINTERGRUND = {
            'ausreichend informiert. Viele Vorlagen können überfordern.',
            ['B-CH-Alltag']),
 }
+
+
+# ---------------------------------------------------------------------------
+# Umbau 15.09.2026 abends - Auswahlaufgabe statt Schreibaufgabe
+# Je Argument vier Erwiderungen, eine pro Technik. Alle vier sind brauchbare
+# Konter; sie unterscheiden sich nur in der Technik. Die App gibt eine Technik
+# vor, die Schueler:innen waehlen die passende Erwiderung.
+#
+# Regeln beim Schreiben:
+# - Keine Satzanfaenge aus dem Tippkasten der Rollenkarte ("Das spricht auch
+#   fuer uns, weil", "Das stimmt nur, wenn", "Das stimmt, aber das Problem
+#   bleibt", "Uns ist ... wichtiger, weil") - sonst erkennt man die Technik am
+#   Satzanfang statt am Inhalt.
+# - Einschraenken = das Argument gilt nur unter einer Bedingung / nur fuer
+#   einen Teil. Entkraeften = Beleg oder Begruendung tragen nicht.
+# - Nur Fakten aus wissensbasis.md.
+# - "abgeleitet": True heisst, die Deutung steht so nicht woertlich in der
+#   Wissensbasis (keine neuen Fakten, aber eigene Schlussfolgerung).
+#
+# Hintergrund je Erwiderung: "belege" (Schluessel in BELEGE), "kriterium"
+# (Schluessel in KRITERIEN_INFO), "argumente" (IDs aus ARGUMENTE).
+# ---------------------------------------------------------------------------
+
+TECHNIK_REIHE = ['anders deuten', 'einschraenken', 'entkraeften', 'gewichten']
+
+BELEGE['Ausgestaltung'] = (
+    'Bessere Regeln für Volksentscheide',
+    'Viele Einwände richten sich gegen eine schlechte Ausgestaltung. Mögliche '
+    'Regeln: eine klare Frage mit rechtlicher Vorprüfung, ein amtliches '
+    'Informationsheft mit Pro und Kontra, Quorum und Fristen, Offenlegung von '
+    'Spenden und Kampagnenkosten, Schutz der Grundrechte. Solche Regeln '
+    'verringern Risiken, beseitigen sie aber nicht vollständig.')
+BELEGE['Weimar'] = (
+    'Volksentscheide in der Weimarer Republik',
+    'Hitler kam über die repräsentative Demokratie an die Macht: Das '
+    'Ermächtigungsgesetz beschlossen gewählte Abgeordnete, nicht das Volk. Auf '
+    'Reichsebene gab es in der ganzen Weimarer Zeit nur wenige, folgenlose '
+    'Volksbegehren (Lübbe-Wolff 2023).')
+
+# Wissensbasis Abschnitt 4 - Leitfrage und Kurzerklaerung
+KRITERIEN_INFO = {
+    'Partizipation': (
+        'Wie gut können sich alle Bürger, auch Minderheiten, politisch einbringen?',
+        'Umfasst Wahlen, Abstimmungen und andere Mitwirkung. Entscheidend ist '
+        'nicht nur, ob Beteiligung erlaubt ist, sondern ob sie zugänglich ist und '
+        'tatsächlich Einfluss ermöglicht.'),
+    'Politische Gleichheit': (
+        'Wie gleichberechtigt können alle Bürger, auch Minderheiten, politischen '
+        'Einfluss nehmen?',
+        'Bildung, Einkommen, Zeit oder finanzielle Macht dürfen nicht dazu führen, '
+        'dass einige Gruppen dauerhaft stärker gehört werden.'),
+    'Transparenz': (
+        'Wie nachvollziehbar sind politische Entscheidungen?',
+        'Bürger sollen erkennen, wer entscheidet, welche Argumente zählen und wer '
+        'Kampagnen bezahlt.'),
+    'Responsivität': (
+        'Wie gut berücksichtigt Politik die Bürgerinteressen?',
+        'Politik muss nicht jede Forderung erfüllen, soll aber reagieren und ihre '
+        'Entscheidung begründen.'),
+    'Öffentlichkeit': (
+        'Wie offen werden politische Fragen diskutiert?',
+        'Unterschiedliche Positionen sollen sichtbar sein, damit Bürger Argumente '
+        'vergleichen können.'),
+    'Politischer Wettbewerb': (
+        'Wie fair konkurrieren politische Alternativen?',
+        'Setzt echte Alternativen und faire Regeln voraus.'),
+    'Entscheidungsqualität': (
+        'Wie gut durchdacht sind politische Entscheidungen?',
+        'Nutzt zuverlässige Informationen, berücksichtigt verschiedene Interessen, '
+        'bedenkt Folgen.'),
+    'Problemlösungsfähigkeit': (
+        'Wie wirksam löst Politik gesellschaftliche Probleme?',
+        'Eine schnelle oder beliebte Entscheidung ist nicht automatisch wirksam.'),
+    'Regierungsfähigkeit': (
+        'Wie gut kann Politik entscheiden und handeln?',
+        'Bedeutet nicht, ohne Beratung besonders schnell zu entscheiden.'),
+    'Umsetzbarkeit': (
+        'Wie gut lassen sich Entscheidungen umsetzen?',
+        'Muss rechtlich erlaubt, finanzierbar und organisatorisch durchführbar sein.'),
+    'Gemeinwohlorientierung': (
+        'Wie gut dient die Entscheidung der Allgemeinheit und berücksichtigt dabei '
+        'Minderheiten?',
+        'Gemeinwohl ist nicht nur der Wunsch der Mehrheit.'),
+}
+
+
+def _e(text, belege=(), kriterium='', argumente=(), abgeleitet=False):
+    return {'text': text, 'belege': list(belege), 'kriterium': kriterium,
+            'argumente': list(argumente), 'abgeleitet': abgeleitet}
+
+
+ERWIDERUNGEN = {
+    # ---------------- Pro-Argumente -> Erwiderungen der Kontra-Seite ----------
+    'P1': {
+        'anders deuten': _e(
+            'Dass in der Schweiz regelmäßig abgestimmt wird, kann man auch '
+            'anders sehen: So viele Vorlagen können überfordern. In Schweizer '
+            'Untersuchungen fühlten sich viele nicht ausreichend informiert.',
+            belege=['B-CH-Alltag'], argumente=['K9']),
+        'einschraenken': _e(
+            'Mehr Einfluss bekommen vor allem die, die tatsächlich abstimmen gehen. '
+            'Das sind häufiger Menschen mit mehr Bildung, Zeit und politischem '
+            'Interesse.',
+            belege=['B-Studie-2023'], argumente=['K8']),
+        'entkraeften': _e(
+            'Ein Recht zum Abstimmen allein ist noch keine echte Beteiligung. '
+            'Partizipation heißt, dass alle Zugang haben und wirklich Einfluss '
+            'nehmen können.',
+            kriterium='Partizipation', argumente=['K8']),
+        'gewichten': _e(
+            'Mitentscheiden ist ein Gewinn. Schwerer wiegt aber, dass Entscheidungen '
+            'gut durchdacht sind – und dafür braucht es Zeit, Fachwissen und '
+            'Beratung.',
+            kriterium='Entscheidungsqualität', argumente=['K9']),
+    },
+    'P2': {
+        'anders deuten': _e(
+            'Die kleinen Effekte aus der Übersicht von 2024 kann man auch '
+            'anders lesen: Ob Menschen Entscheidungen akzeptieren, hängt '
+            'offenbar stark von anderen Dingen ab – etwa von fairen Ergebnissen'
+            ' und glaubwürdiger Politik.',
+            belege=['B-Uebersicht-2024'], argumente=['K7'], abgeleitet=True),
+        'einschraenken': _e(
+            'Akzeptanz kann wachsen, aber nicht bei allen. Wer sich schlecht '
+            'informiert fühlt, kann nach der Abstimmung sogar enttäuschter '
+            'sein.',
+            argumente=['K7']),
+        'entkraeften': _e(
+            'Dass die eigene Stimme gezählt wurde, tröstet nicht automatisch: '
+            'Wer bei Abstimmungen oft verliert, kann sogar enttäuschter werden.',
+            argumente=['K7']),
+        'gewichten': _e(
+            'Akzeptanz ist wichtig. Mehr zählt aber, ob eine Entscheidung das '
+            'Problem wirklich löst – eine beliebte Entscheidung ist nicht '
+            'automatisch wirksam.',
+            kriterium='Problemlösungsfähigkeit'),
+    },
+    'P3': {
+        'anders deuten': _e(
+            'Dass Bürger vor jeder Abstimmung offizielle Erläuterungen '
+            'bekommen, kann man auch so sehen: Die Vorlagen sind oft schwierig '
+            'und können Menschen überfordern.',
+            belege=['B-CH-Alltag'], argumente=['K9']),
+        'einschraenken': _e(
+            'Von der Debatte haben vor allem Menschen etwas, die Zeit, Fachwissen '
+            'und gute Sprachkenntnisse mitbringen. Bei allen anderen kommt davon '
+            'weniger an.',
+            argumente=['K9']),
+        'entkraeften': _e(
+            'Viel Aufmerksamkeit heißt noch nicht, dass fair diskutiert wird. Teure '
+            'Kampagnen können die Debatte bestimmen – bei Proposition 22 gaben '
+            'Firmen rund 200 Millionen Dollar aus.',
+            belege=['B-Prop22'], argumente=['K3']),
+        'gewichten': _e(
+            'Offene Debatten sind ein Plus. Schwerer wiegt eine sachliche Abwägung – '
+            'und die geht bei lauten, emotionalen Kampagnen leicht unter.',
+            kriterium='Entscheidungsqualität', argumente=['K2']),
+    },
+    'P4': {
+        'anders deuten': _e(
+            'Dass so viele Regeln nötig sind – Vorprüfung, Informationsheft, '
+            'Offenlegung –, kann man auch als Warnzeichen sehen: Ohne diese Regeln '
+            'sind Volksentscheide offenbar sehr anfällig.',
+            belege=['Ausgestaltung'], abgeleitet=True),
+        'einschraenken': _e(
+            'Klare Regeln machen vor allem sichtbar, wer zahlt und worum es '
+            'geht. Ob alle die Informationen auch verstehen, hängt weiter von '
+            'Bildung, Zeit und Sprachkenntnissen ab.',
+            argumente=['K9']),
+        'entkraeften': _e(
+            'Offenlegung macht Geld sichtbar, nimmt ihm aber nicht seinen Einfluss. '
+            'Teure Werbung erreicht trotzdem mehr Menschen.',
+            belege=['B-Prop22'], argumente=['K3']),
+        'gewichten': _e(
+            'Klare Informationen sind gut. Entscheidender ist, ob eine schwierige '
+            'Frage gut gelöst wird – und auf dem Stimmzettel gibt es nur Ja oder '
+            'Nein, keinen Kompromiss.',
+            kriterium='Entscheidungsqualität', argumente=['K4']),
+    },
+    'P5': {
+        'anders deuten': _e(
+            'Der Brexit zeigt auch die Kehrseite: Ein einziges Abstimmungsergebnis '
+            'kann ein Land festlegen, obwohl danach noch viele Fragen offen sind.',
+            belege=['B-Brexit'], argumente=['K4']),
+        'einschraenken': _e(
+            'Korrigieren klappt vor allem, wenn Bürger selbst neue Initiativen '
+            'starten dürfen. Bei Abstimmungen, die von oben angesetzt werden, fehlt '
+            'dieser Weg.',
+            belege=['B-Brexit']),
+        'entkraeften': _e(
+            'Eine neue Abstimmung behebt die eigentliche Schwäche nicht: Auch beim '
+            'zweiten Mal gibt es nur Ja oder Nein, keinen ausgehandelten Kompromiss.',
+            argumente=['K4']),
+        'gewichten': _e(
+            'Fehler korrigieren zu können, ist gut. Für uns zählt mehr, dass Politik '
+            'verlässlich handeln kann – ständig neue Abstimmungen machen Planung '
+            'unsicher.',
+            kriterium='Regierungsfähigkeit', argumente=['K1']),
+    },
+    'P6': {
+        'anders deuten': _e(
+            '„Parlament und Regierung müssen reagieren“ kann man auch anders '
+            'verstehen: Reagieren heißt nicht zustimmen – die Politik kann die '
+            'Forderung auch begründet ablehnen.',
+            kriterium='Responsivität'),
+        'einschraenken': _e(
+            'Gleichberechtigter wird nur die Tagesordnung. Bei den Ergebnissen haben '
+            'Menschen mit höherem Einkommen und mehr Bildung laut der Studie '
+            'weiterhin einen Vorteil.',
+            belege=['B-Studie-2026']),
+        'entkraeften': _e(
+            'Auch finanzstarke Gruppen nutzen Volksentscheide: Bei Proposition '
+            '22 gaben Firmen rund 200 Millionen Dollar aus, und ihre Seite '
+            'gewann. Um Bürgerinteressen ging es dabei nicht unbedingt.',
+            belege=['B-Prop22'], argumente=['K3']),
+        'gewichten': _e(
+            'Neue Themen auf der Tagesordnung sind gut. Am Ende zählt aber mehr, ob '
+            'sich die Entscheidung umsetzen lässt – rechtlich, finanziell und '
+            'praktisch.',
+            kriterium='Umsetzbarkeit', argumente=['K6']),
+    },
+    'P7': {
+        'anders deuten': _e(
+            'Ein Veto kann man auch als Bremse sehen: Beschlossene Gesetze können '
+            'immer wieder gestoppt werden, und Regierung und Parlament planen dann '
+            'unsicherer.',
+            argumente=['K1']),
+        'einschraenken': _e(
+            'Wirksam ist das Veto nur für Gruppen, die in kurzer Zeit genug '
+            'Unterschriften sammeln können – in der Schweiz 50.000 in 100 '
+            'Tagen.',
+            belege=['CH-Instrumente']),
+        'entkraeften': _e(
+            'Stoppen ist noch keine gute Kontrolle: Beim Referendum können Bürger '
+            'ein Gesetz nur ablehnen, aber nicht beraten oder verbessern.',
+            argumente=['K4']),
+        'gewichten': _e(
+            'Kontrolle durch die Bürger ist wichtig. Schwerer wiegt, dass Regierung '
+            'und Parlament handeln können – gerade bei dringenden Problemen.',
+            kriterium='Regierungsfähigkeit', argumente=['K1']),
+    },
+    'P8': {
+        'anders deuten': _e(
+            'Die Drohung mit einer Abstimmung kann man auch als Blockade sehen: Aus '
+            'Sorge vor einem Referendum werden schwierige Gesetze vielleicht gar '
+            'nicht erst beschlossen.',
+            argumente=['K1'], abgeleitet=True),
+        'einschraenken': _e(
+            'Die frühe Kompromisssuche ist für die Schweiz mit ihrer starken '
+            'Kompromisskultur beschrieben. Wo diese Kultur fehlt, ist nicht '
+            'sicher, dass die Drohung Kompromisse bringt.',
+            belege=['CH-Instrumente'], argumente=['K1']),
+        'entkraeften': _e(
+            'Ein Kompromiss ist nicht automatisch die bessere Lösung. Dass mehr '
+            'Gruppen beteiligt sind, sagt noch nichts darüber, ob das Problem '
+            'gelöst wird.',
+            argumente=['K1']),
+        'gewichten': _e(
+            'Frühe Kompromisse sind ein Plus. Schwerer wiegt für uns die '
+            'politische Gleichheit: Einkommen, Bildung oder Geld dürfen nicht '
+            'entscheiden, welche Gruppen stärker gehört werden.',
+            kriterium='Politische Gleichheit'),
+    },
+    'P9': {
+        'anders deuten': _e(
+            'Dass eine Initiative eine einzelne Frage herauslöst, kann man auch als '
+            'Nachteil sehen: Zusammenhänge mit anderen Themen gehen dabei verloren.',
+            argumente=['K1'], abgeleitet=True),
+        'einschraenken': _e(
+            'Eine faire Chance haben Vorschläge nur, wenn beide Seiten ähnlich viel '
+            'Geld für Werbung haben. Sonst ist im Vorteil, wer mehr ausgeben kann.',
+            belege=['B-Prop22'], argumente=['K3']),
+        'entkraeften': _e(
+            '„Ohne große Partei“ heißt nicht ohne starke Unterstützung: Eine '
+            'Volksinitiative braucht in der Schweiz 100.000 Unterschriften in '
+            '18 Monaten.',
+            belege=['CH-Instrumente']),
+        'gewichten': _e(
+            'Mehr Auswahl ist gut. Entscheidender ist, dass eine Frage gründlich '
+            'beraten wird – bei einer einzelnen Ja-Nein-Frage fehlt der Kompromiss.',
+            kriterium='Entscheidungsqualität', argumente=['K4']),
+    },
+    'P10': {
+        'anders deuten': _e(
+            'Dass vor allem mittlere Gruppen profitieren, kann auch heißen: '
+            'Menschen mit wenig Einkommen und wenig Bildung haben davon nicht '
+            'unbedingt etwas.',
+            belege=['B-Studie-2026'], abgeleitet=True),
+        'einschraenken': _e(
+            'Etwas gleichberechtigter wird nur die Tagesordnung. Bei den Ergebnissen '
+            'bleibt der Vorteil für Menschen mit höherem Einkommen und mehr Bildung.',
+            belege=['B-Studie-2026']),
+        'entkraeften': _e(
+            'Eine gleichere Tagesordnung macht das Abstimmen selbst nicht '
+            'gleicher: In der Schweiz hängt die Teilnahme von früherer '
+            'Teilnahme, Interesse, Bildung und sozialer Klasse ab.',
+            belege=['B-Studie-2023'], argumente=['K8']),
+        'gewichten': _e(
+            'Eine offenere Tagesordnung ist ein Plus. Schwerer wiegt, ob die '
+            'Entscheidungen gut durchdacht sind – dafür braucht es Zeit und '
+            'Fachwissen, und die sind ungleich verteilt.',
+            kriterium='Entscheidungsqualität', argumente=['K9']),
+    },
+
+    # ---------------- Kontra-Argumente -> Erwiderungen der Pro-Seite ----------
+    'K1': {
+        'anders deuten': _e(
+            'Dass Gesetze gestoppt werden können, kann man auch als Vorteil '
+            'sehen: Regierung und Parlament beziehen betroffene Gruppen dann '
+            'früher ein und suchen Kompromisse.',
+            belege=['CH-Instrumente'], argumente=['P8']),
+        'einschraenken': _e(
+            'Ein Referendum kommt nur zustande, wenn genug Menschen es '
+            'verlangen – in der Schweiz 50.000 Unterschriften in 100 Tagen oder'
+            ' acht Kantone.',
+            belege=['CH-Instrumente'], argumente=['P7']),
+        'entkraeften': _e(
+            'Regierungsfähig heißt nicht, besonders schnell zu entscheiden. Gute '
+            'Politik braucht Beratung, auch wenn das länger dauert.',
+            kriterium='Regierungsfähigkeit'),
+        'gewichten': _e(
+            'Verlässliches Regieren ist wichtig. Mehr zählt für uns, dass die Politik '
+            'auf die Bürger hört – und das muss sie, wenn Bürger ein Gesetz stoppen '
+            'können.',
+            kriterium='Responsivität', argumente=['P7']),
+    },
+    'K2': {
+        'anders deuten': _e(
+            'Den Satz von Theodor Heuss kann man auch als Misstrauen gegenüber den '
+            'Bürgern lesen – nicht als Beweis, dass Volksentscheide gefährlich sind.',
+            abgeleitet=True),
+        'einschraenken': _e(
+            'Stimmungsmacher haben es vor allem leicht, wenn sachliche Informationen '
+            'fehlen. Mit einem amtlichen Informationsheft und klaren Regeln wird das '
+            'schwerer.',
+            belege=['Ausgestaltung'], argumente=['P4']),
+        'entkraeften': _e(
+            'Die Warnung von Heuss ist historisch überzogen: Hitler kam über '
+            'gewählte Abgeordnete an die Macht, nicht über das Volk. In der '
+            'Weimarer Zeit gab es auf Reichsebene nur wenige, folgenlose '
+            'Volksbegehren.',
+            belege=['Weimar']),
+        'gewichten': _e(
+            'Die Gefahr durch Stimmungsmacher ist ernst. Schwerer wiegt aber, dass '
+            'Bürger sich überhaupt selbst einbringen können – sonst entscheiden '
+            'immer nur andere für sie.',
+            kriterium='Partizipation', argumente=['P1']),
+    },
+    'K3': {
+        'anders deuten': _e(
+            'Dass man die 200 Millionen Dollar bei Proposition 22 kennt, zeigt auch: '
+            'Wer hinter einer Kampagne steckt, kann öffentlich sichtbar werden.',
+            belege=['B-Prop22'], argumente=['P4'], abgeleitet=True),
+        'einschraenken': _e(
+            'Geld hat vor allem dann großen Einfluss, wenn es keine '
+            'Kampagnenregeln gibt. Mit Grenzen für Spenden und Kampagnen lässt '
+            'sich dieser Einfluss verkleinern.',
+            belege=['Ausgestaltung'], argumente=['P6']),
+        'entkraeften': _e(
+            'Geld wirkt nicht nur bei Volksentscheiden, sondern auch im Wettbewerb '
+            'der Parteien. Das Argument spricht also nicht speziell gegen '
+            'Volksentscheide.',
+            argumente=['P9']),
+        'gewichten': _e(
+            'Der Einfluss von Geld ist ein Problem. Für uns zählt mehr, dass Bürger '
+            'eigene Themen einbringen können, die die Politik sonst liegen lässt.',
+            kriterium='Responsivität', argumente=['P6']),
+    },
+    'K4': {
+        'anders deuten': _e(
+            'Den Brexit kann man auch anders lesen: Das Problem war nicht das Ja '
+            'oder Nein, sondern dass es keinen Weg gab, das Ergebnis später zu '
+            'korrigieren.',
+            belege=['B-Brexit'], argumente=['P5']),
+        'einschraenken': _e(
+            'Zu stark vereinfacht wird vor allem, wenn die Frage unklar ist. Mit '
+            'einer klaren Frage und einer Vorprüfung lässt sich das verringern.',
+            belege=['Ausgestaltung'], argumente=['P4']),
+        'entkraeften': _e(
+            'Ein Kompromiss ist trotzdem möglich – schon vor der Abstimmung: '
+            'Bei „Rettet die Bienen“ übernahm der bayerische Landtag die '
+            'Forderung mit einem Begleitgesetz, und ein Volksentscheid fand gar'
+            ' nicht statt.',
+            belege=['B-Bienen'], argumente=['P8']),
+        'gewichten': _e(
+            'Einfache Fragen haben Nachteile. Mehr zählt für uns, dass die Politik '
+            'erfährt, was die Bürger wollen – ein klares Ja oder Nein zeigt das '
+            'deutlich.',
+            kriterium='Responsivität', abgeleitet=True),
+    },
+    'K5': {
+        'anders deuten': _e(
+            'Dass eine Mehrheit über Minderheitenfragen entscheidet, kann '
+            'Rechte auch ausweiten: In Irland führte eine Volksabstimmung 2015 '
+            'die Ehe für alle ein.',
+            belege=['B-Irland']),
+        'einschraenken': _e(
+            'Gefährlich wird es vor allem, wenn Grundrechte nicht geschützt sind. '
+            'Werden Fragen vorher rechtlich geprüft, setzt das der Mehrheit Grenzen.',
+            belege=['Ausgestaltung']),
+        'entkraeften': _e(
+            'Das Problem haben nicht nur Volksentscheide: Auch gewählte '
+            'Parlamente treffen manchmal Entscheidungen gegen Minderheiten.',
+            belege=['Minderheiten-Parlament']),
+        'gewichten': _e(
+            'Die Gefahr für Minderheiten ist ernst. Schwerer wiegt für uns, '
+            'dass Politik auf die Bürger hört – mit Volksentscheiden kann sie '
+            'wichtige Themen nicht einfach liegen lassen.',
+            kriterium='Responsivität', argumente=['P6']),
+    },
+    'K6': {
+        'anders deuten': _e(
+            'Die Expertenkommission nach dem Berliner Volksentscheid kann man auch '
+            'positiv sehen: Das klare Votum hat die Politik gezwungen, das Thema '
+            'ernsthaft zu prüfen.',
+            belege=['B-DW']),
+        'einschraenken': _e(
+            'Schwierig wird die Umsetzung vor allem, wenn Kosten und '
+            'Rechtsfragen erst nach der Abstimmung geprüft werden. Werden sie '
+            'vorher geprüft, wird dieses Risiko kleiner.',
+            belege=['Ausgestaltung']),
+        'entkraeften': _e(
+            'Ein Votum kann schon eine fertige Lösung sein: Beim Hamburger '
+            'Zukunftsentscheid 2025 stimmten die Bürger über ein Gesetz ab, und'
+            ' dieses Gesetz gilt jetzt.',
+            belege=['B-Hamburg']),
+        'gewichten': _e(
+            'Die Umsetzung kann schwierig sein. Mehr zählt, dass Bürger ein Thema '
+            'selbst auf die Tagesordnung bringen können, das die Politik sonst '
+            'vermeiden würde.',
+            kriterium='Responsivität', argumente=['P6']),
+    },
+    'K7': {
+        'anders deuten': _e(
+            'Die Übersicht über 67 Studien kann man auch so lesen: Die Wirkungen auf '
+            'Vertrauen und Wissen sind klein, aber sie sind positiv.',
+            belege=['B-Uebersicht-2024'], argumente=['P2']),
+        'einschraenken': _e(
+            'Enttäuscht werden vor allem Menschen, die sich schlecht informiert '
+            'fühlen. Kurze, verständliche Informationen vor der Abstimmung können '
+            'das verringern.',
+            belege=['Ausgestaltung'], argumente=['P3']),
+        'entkraeften': _e(
+            'Verlieren muss nicht enttäuschen: Bei Stuttgart 21 wurde das '
+            'Ergebnis breit anerkannt und beendete einen langen Konflikt.',
+            belege=['B-S21']),
+        'gewichten': _e(
+            'Mehr Vertrauen ist nicht garantiert. Mehr zählt, dass Bürger '
+            'mitentscheiden können – ein faires Verfahren ist schon für sich ein '
+            'Gewinn.',
+            kriterium='Partizipation', argumente=['P2']),
+    },
+    'K8': {
+        'anders deuten': _e(
+            'Dass vor allem Bessergestellte abstimmen, kann man auch als Auftrag '
+            'sehen: Es braucht leichtere Zugänge und verständliche Informationen – '
+            'nicht weniger Mitbestimmung.',
+            argumente=['P1'], abgeleitet=True),
+        'einschraenken': _e(
+            'Die Ungleichheit ist nicht bei jeder Abstimmung gleich stark – das'
+            ' zeigt dieselbe Studie zu 43 Schweizer Abstimmungen.',
+            belege=['B-Studie-2023']),
+        'entkraeften': _e(
+            'Ungleichen Einfluss gibt es auch im Parlament: Laut einer Studie von '
+            '2026 greifen Initiativen die Themen mittlerer Gruppen sogar besser auf '
+            'als Parlamente.',
+            belege=['B-Studie-2026'], argumente=['P10']),
+        'gewichten': _e(
+            'Ungleiche Beteiligung ist ein Problem. Schwerer wiegt aber, dass Bürger '
+            'zwischen den Wahlen überhaupt direkt mitentscheiden können.',
+            kriterium='Partizipation', argumente=['P1']),
+    },
+    'K9': {
+        'anders deuten': _e(
+            'Dass sich viele nicht ausreichend informiert fühlen, kann man auch'
+            ' positiv sehen: Die Menschen merken, dass sie mehr wissen wollen, '
+            'bevor sie entscheiden.',
+            belege=['B-CH-Alltag'], abgeleitet=True),
+        'einschraenken': _e(
+            'Ungleiche Wissenschancen gibt es vor allem, wenn Informationen schwer '
+            'verständlich sind. Kurze, barrierefreie Erklärungen können die Lücken '
+            'verkleinern.',
+            belege=['Ausgestaltung'], argumente=['P3']),
+        'entkraeften': _e(
+            'Volksentscheide können Wissen sogar vergrößern: Eine Übersicht über 67 '
+            'Studien findet kleine positive Wirkungen auf das Wissen der Bürger.',
+            belege=['B-Uebersicht-2024']),
+        'gewichten': _e(
+            'Ungleiches Wissen ist ein Problem. Mehr zählt, dass politische Fragen '
+            'offen diskutiert werden – dabei lernen viele Menschen dazu.',
+            kriterium='Öffentlichkeit', argumente=['P3']),
+    },
+}
+
+
+def technik_beutel_neu(letzte: str = '') -> list:
+    """Die vier Techniken in zufaelliger Reihenfolge, ohne direkte Wiederholung
+    an der Nahtstelle zum vorigen Durchgang. Es wird von hinten gezogen (pop)."""
+    import random
+    beutel = TECHNIK_REIHE[:]
+    random.shuffle(beutel)
+    if letzte and beutel[-1] == letzte:
+        beutel[0], beutel[-1] = beutel[-1], beutel[0]
+    return beutel
+
+BELEGE['B-Frauenstimmrecht'] = (
+    'Schweiz, Frauenstimmrecht 1971',
+    'Am 7. Februar 1971 stimmten rund zwei Drittel mit Ja. Frauen erhielten das '
+    'nationale Stimmrecht; im Kanton Appenzell Innerrhoden erst 1990 nach einem '
+    'Gerichtsurteil.')
+
+BELEGE['Minderheiten-Parlament'] = (
+    'Auch Parlamente entscheiden gegen Minderheiten',
+    'Auch gewählte Parlamente treffen manchmal Entscheidungen gegen Minderheiten – '
+    'die Gefahr ist nicht allein ein Problem direkter Demokratie. Grundrechte und '
+    'Gerichte begrenzen die Ergebnisse in beiden Fällen (Lübbe-Wolff 2023).')

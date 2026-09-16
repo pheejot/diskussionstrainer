@@ -88,6 +88,29 @@ GLOSSAR = {
     'Sachurteil': 'Eine Feststellung, die man nachprüfen kann.',
     'Werturteil': 'Eine Bewertung. Dafür brauchst du einen Maßstab.',
     'Fishbowl': 'Eine Diskussionsform: Innen sitzen die, die reden. Außen sitzen die, die zuhören und beobachten.',
+
+    # --- Ergaenzung 15.09.2026: Woerter aus den Erwiderungen und Hintergruenden ---
+    'Tagesordnung': 'Die Liste der Themen, über die die Politik spricht und entscheidet.',
+    'Kompromisskultur': 'Die Gewohnheit, dass Parteien früh aufeinander zugehen und gemeinsame Lösungen suchen.',
+    'Vorprüfung': 'Bevor abgestimmt wird, prüfen Fachleute, ob die Frage rechtlich erlaubt ist.',
+    'Informationsheft': 'Ein Heft, das vor der Abstimmung an alle geht und Pro und Kontra erklärt.',
+    'Offenlegung': 'Etwas wird öffentlich gezeigt, damit alle es sehen können – zum Beispiel, wer eine Kampagne bezahlt.',
+    'amtlich': 'Vom Staat oder einer Behörde herausgegeben.',
+    'barrierefrei': 'So gestaltet, dass alle es nutzen und verstehen können – zum Beispiel auch in einfacher Sprache.',
+    'Stimmungsmacher': 'Jemand, der mit starken Gefühlen und einfachen Sprüchen Menschen beeinflusst.',
+    'Bessergestellte': 'Menschen mit mehr Geld, mehr Bildung oder mehr Zeit.',
+    'Allheilmittel': 'Etwas, das angeblich alle Probleme auf einmal löst.',
+    'Expertenkommission': 'Eine Gruppe von Fachleuten, die eine Frage genau prüft und Vorschläge macht.',
+    'Studie': 'Eine wissenschaftliche Untersuchung.',
+    'Brexit': 'Der Austritt Großbritanniens aus der Europäischen Union (EU).',
+    'Proposition': 'So heißt in Kalifornien (USA) eine Vorlage, über die das Volk abstimmt.',
+    'Ehe für alle': 'Auch zwei Männer oder zwei Frauen dürfen heiraten.',
+    'Minarett': 'Der Turm einer Moschee.',
+    'enteignen': 'Der Staat nimmt jemandem Eigentum weg – meist gegen eine Entschädigung.',
+    'Weimarer Republik': 'Die erste Demokratie in Deutschland, von 1919 bis 1933.',
+    'Ermächtigungsgesetz': 'Das Gesetz von 1933, mit dem der Reichstag Hitler erlaubte, Gesetze ohne das Parlament zu machen.',
+    'Reichsebene': 'Ganz Deutschland in der Zeit vor 1945 – so wie heute die Bundesebene.',
+    'Landtag': 'Das Parlament eines Bundeslandes, zum Beispiel in Bayern.',
 }
 
 # Unregelmaessige Formen, die die Endungsregel unten nicht erwischt.
@@ -101,6 +124,7 @@ ALIASE = {
     'Gesetzentwuerfe': 'Gesetzentwurf',
     'Gesetzentwürfe': 'Gesetzentwurf',
     'Vetos': 'Veto',
+    'Weimarer Zeit': 'Weimarer Republik',
 }
 
 # Endungen, die im Deutschen an einen Begriff treten koennen

@@ -406,3 +406,132 @@ def hilfe(client, technik, ausgangsargument, herkunft, stufe):
         }},
     )
     return json.loads(antwort.output_text)
+
+
+# ---------------------------------------------------------------------------
+# 5 - Vier Erwiderungen zu einem SELBST GESCHRIEBENEN Argument (15.09.2026)
+# Einziger KI-Aufruf der Auswahl-Fassung. Argumente aus dem Materialpool haben
+# feste, vorformulierte Erwiderungen in argumente.py.
+# Die KI liefert fuer den Hintergrund nur IDs; die App zeigt dazu die
+# gepruefte Kernangabe aus argumente.BELEGE bzw. KRITERIEN_INFO. So kann die KI
+# keine Hintergrundfakten erfinden.
+# ---------------------------------------------------------------------------
+
+BELEG_IDS = [
+    'B-CH-Alltag', 'CH-Instrumente', 'B-Brexit', 'B-Prop22', 'B-Minarett',
+    'B-Irland', 'B-Kalifornien', 'B-DW', 'B-Berlin-Klima', 'B-Hamburg',
+    'B-Bienen', 'B-S21', 'B-CH-Masseneinwanderung', 'B-Frauenstimmrecht',
+    'B-Studie-2023', 'B-Studie-2026', 'B-Uebersicht-2024', 'Ausgestaltung',
+]
+
+ANWEISUNG_ERWIDERUNGEN = '''
+Ein Berufsschueler hat ein eigenes Argument zur Streitfrage geschrieben:
+Sollten in Deutschland bundesweite Volksentscheide eingefuehrt werden?
+Du schreibst VIER Erwiderungen auf genau dieses Argument - eine pro Technik.
+Der Schueler bekommt eine Technik vorgegeben und soll die passende Erwiderung
+anklicken. Die vier Erwiderungen muessen deshalb klar an ihrer Technik
+unterscheidbar sein.
+
+DIE VIER TECHNIKEN (Wortlaut aus dem Materialpool)
+- anders_deuten: Kann man dieselbe Information auch anders verstehen?
+  Die Erwiderung nimmt dieselbe Tatsache aus dem Argument und zeigt, dass sie
+  auch etwas anderes bedeuten kann. Sie bestreitet das Argument nicht.
+- einschraenken: Wann stimmt das Argument - und wann nicht?
+  Die Erwiderung gibt zu, dass das Argument stimmt, aber nur unter einer
+  Bedingung oder nur fuer einen Teil der Menschen. Sie nennt die Grenze.
+- entkraeften: Warum ueberzeugt das Argument nicht vollstaendig?
+  Die Erwiderung zeigt eine echte Schwachstelle: Der Beleg passt nicht, die
+  Begruendung traegt nicht oder die Folgerung stimmt so nicht.
+- gewichten: Welches Argument ist nach einem Kriterium wichtiger?
+  Die Erwiderung erkennt das Argument an und stellt ein anderes daneben, das
+  nach einem Kriterium schwerer wiegt. Beide Seiten kommen vor.
+
+REGELN
+1. Jede Erwiderung antwortet direkt auf das Argument des Schuelers, egal ob es
+   fuer oder gegen Volksentscheide ist. Alle vier sind brauchbare, faire
+   Konter. Bewerte nie die politische Position.
+2. Jede Erwiderung ist ein bis zwei kurze Saetze lang, hoechstens 35 Woerter.
+3. Einfache Sprache, kurze Saetze, keine Schachtelsaetze, keine Fremdwoerter
+   ohne Not. Keine du-Form noetig.
+4. Benutze NICHT diese Satzanfaenge: "Das spricht auch fuer uns, weil",
+   "Das stimmt nur, wenn", "Das stimmt, aber das Problem bleibt",
+   "Uns ist ... wichtiger, weil". Nenne den Namen der Technik nicht im Text.
+5. Erfinde NIEMALS Zahlen, Studien, Orte oder Beispiele. Nutze als Fakten nur
+   Abschnitt 7 der Wissensbasis. Wenn du keinen passenden Beleg hast, arbeite
+   mit der Begruendung oder einem Kriterium.
+6. "belege": die IDs aus Abschnitt 7, auf die sich die Erwiderung stuetzt
+   ("Ausgestaltung" = Abschnitt 6). Leere Liste, wenn keiner genutzt wird.
+7. "kriterium": das Kriterium, auf das die Erwiderung zielt. Bei gewichten
+   IMMER das Kriterium, das schwerer wiegt. Sonst leerer String erlaubt.
+8. Ist der Text des Schuelers kein verstaendliches Argument zur Streitfrage,
+   stelle in "verstaendnisfrage" EINE kurze Rueckfrage in du-Form und lass alle
+   vier Texte leer. Sonst bleibt verstaendnisfrage leer.
+9. Keine Emojis, kein Markdown. Valides JSON nach Schema.
+
+WISSENSBASIS
+{wissensbasis}
+'''
+
+_ERW_EINZELN = {
+    'type': 'object',
+    'properties': {
+        'text': {'type': 'string'},
+        'belege': {'type': 'array', 'items': {'type': 'string', 'enum': BELEG_IDS}},
+        'kriterium': {'type': 'string', 'enum': KRITERIEN},
+    },
+    'required': ['text', 'belege', 'kriterium'],
+    'additionalProperties': False,
+}
+
+SCHEMA_ERWIDERUNGEN = {
+    'type': 'object',
+    'properties': {
+        'verstaendnisfrage': {'type': 'string'},
+        'anders_deuten': _ERW_EINZELN,
+        'einschraenken': _ERW_EINZELN,
+        'entkraeften': _ERW_EINZELN,
+        'gewichten': _ERW_EINZELN,
+    },
+    'required': ['verstaendnisfrage', 'anders_deuten', 'einschraenken',
+                 'entkraeften', 'gewichten'],
+    'additionalProperties': False,
+}
+
+
+def erwiderungen(client, argument, rolle):
+    """Vier Erwiderungen zu einem eigenen Argument.
+
+    Rueckgabe im selben Format wie argumente.ERWIDERUNGEN[...]:
+    {'anders deuten': {...}, 'einschraenken': {...}, ...} - oder
+    {'verstaendnisfrage': '...'}.
+    """
+    eingabe = (
+        f'Rolle des Schuelers: {rolle}\n'
+        f'Argument des Schuelers: {argument}'
+    )
+    antwort = client.responses.create(
+        model=MODELL,
+        instructions=ANWEISUNG_ERWIDERUNGEN.format(wissensbasis=wissensbasis()),
+        input=eingabe,
+        text={'format': {
+            'type': 'json_schema',
+            'name': 'trainer_erwiderungen',
+            'schema': SCHEMA_ERWIDERUNGEN,
+            'strict': True,
+        }},
+    )
+    roh = json.loads(antwort.output_text)
+    if roh.get('verstaendnisfrage', '').strip():
+        return {'verstaendnisfrage': roh['verstaendnisfrage'].strip()}
+    ergebnis = {}
+    for schluessel, technik in (('anders_deuten', 'anders deuten'),
+                                ('einschraenken', 'einschraenken'),
+                                ('entkraeften', 'entkraeften'),
+                                ('gewichten', 'gewichten')):
+        e = roh[schluessel]
+        if not e['text'].strip():
+            raise ValueError('leere Erwiderung')
+        ergebnis[technik] = {'text': e['text'].strip(), 'belege': e['belege'],
+                             'kriterium': e['kriterium'], 'argumente': [],
+                             'abgeleitet': False}
+    return ergebnis
